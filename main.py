@@ -9,7 +9,7 @@ app = FastAPI(
 @app.get("/")
 def home():
     return {
-        "message": "AudioCoach API is running 🚀"
+        "message": "AudioCoach API is running"
     }
 
 
