@@ -1,0 +1,13 @@
+# Audio Pipeline dependencies — Person 1
+# Note: madmom is intentionally excluded. It is unmaintained (last PyPI
+# release 2018) and breaks on modern Python/NumPy. Confirmed via testing.
+# Rhythm/tempo cross-validation drops to librosa-only for V1.
+# Flag this to the team if it matters for the locked feature list.
+
+setuptools<81      # required so crepe's build script can still find pkg_resources
+numpy
+scipy
+soundfile
+librosa
+noisereduce
+crepe

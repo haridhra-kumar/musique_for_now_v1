@@ -6,3 +6,16 @@ venv/
 
 .vscode/
 .idea/
+
+# Audio/video files — never commit these to the repo
+*.mp3
+*.wav
+*.mp4
+*.mov
+
+# Generated output from the batch tester
+test_recordings/cleaned_output/
+
+# Test recordings folder contents (keep the .gitkeep placeholder only)
+test_recordings/*
+!test_recordings/.gitkeep
