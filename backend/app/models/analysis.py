@@ -3,8 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import String, Integer, Float, Boolean, Text, DateTime, ForeignKey, func, JSON
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import String, Integer, Float, Boolean, Text, DateTime, ForeignKey, Uuid, func, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
@@ -13,8 +12,8 @@ from ..database import Base
 class Analysis(Base):
     __tablename__ = "analyses"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id"), nullable=False, index=True)
     file_url: Mapped[str] = mapped_column(String(500), nullable=False)
     file_name: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="processing", nullable=False)  # processing | completed | failed
@@ -49,8 +48,8 @@ class Analysis(Base):
 class AnalysisTimestamp(Base):
     __tablename__ = "timestamps"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    analysis_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("analyses.id"), nullable=False, index=True)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    analysis_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("analyses.id"), nullable=False, index=True)
     time_seconds: Mapped[float] = mapped_column(Float, nullable=False)
     issue_type: Mapped[str] = mapped_column(String(20), nullable=False)
     severity: Mapped[str] = mapped_column(String(10), nullable=False)
@@ -62,8 +61,8 @@ class AnalysisTimestamp(Base):
 class AnalysisFeedback(Base):
     __tablename__ = "feedback"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    analysis_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("analyses.id"), unique=True, nullable=False)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    analysis_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("analyses.id"), unique=True, nullable=False)
     beginner_text: Mapped[str] = mapped_column(Text, nullable=False)
     musician_text: Mapped[str] = mapped_column(Text, nullable=False)
     llm_generated: Mapped[bool] = mapped_column(Boolean, default=False)

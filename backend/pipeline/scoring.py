@@ -42,7 +42,7 @@ def score_pitch(pitch_frames: list[dict]) -> int:
 
 def score_rhythm(rhythm_data: dict) -> int:
     """Delegates to the RhythmResult's own score, or computes from beat data."""
-    if "rhythm_score" in rhythm_data:
+    if rhythm_data.get("rhythm_score") is not None:
         return int(rhythm_data["rhythm_score"])
 
     beat_times = rhythm_data.get("beat_times", [])

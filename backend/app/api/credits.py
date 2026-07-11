@@ -24,6 +24,7 @@ async def purchase(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    old_balance = user.credits
     try:
         new_balance = await add_credits(db, user, body.pack_id, body.payment_id)
     except ValueError as e:
@@ -31,5 +32,5 @@ async def purchase(
 
     return PurchaseResponse(
         new_balance=new_balance,
-        credits_added=new_balance - (user.credits - new_balance),
+        credits_added=new_balance - old_balance,
     )

@@ -31,7 +31,7 @@ librosa==0.10.2
 soundfile==0.12.1
 noisereduce==3.0.3
 crepe==0.0.16
-tensorflow==2.18.0
+tensorflow>=2.16.0,<3.0
 
 # Rhythm (optional — install if needed)
 # madmom==0.16.1
