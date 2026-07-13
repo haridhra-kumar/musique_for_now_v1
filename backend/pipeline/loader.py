@@ -13,7 +13,6 @@ from dataclasses import dataclass
 import librosa
 import noisereduce as nr
 import numpy as np
-import soundfile as sf
 
 from . import config as cfg
 

@@ -7,11 +7,12 @@ import logging
 import uuid
 
 from sqlalchemy import create_engine, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
+
+from app.config import get_settings
+from app.models.analysis import Analysis, AnalysisFeedback, AnalysisTimestamp
 
 from .celery_app import celery_app
-from app.config import get_settings
-from app.models.analysis import Analysis, AnalysisTimestamp, AnalysisFeedback
 
 logger = logging.getLogger("audiocoach.task")
 settings = get_settings()

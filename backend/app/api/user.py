@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select, desc
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
 from ..dependencies import get_current_user
-from ..models.user import User
 from ..models.analysis import Analysis
 from ..models.credit import WeeklyProgress
+from ..models.user import User
 from ..schemas.analysis import AnalysisListItem, WeeklyProgressOut
 
 router = APIRouter(prefix="/user", tags=["user"])

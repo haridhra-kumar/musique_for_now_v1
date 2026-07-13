@@ -1,13 +1,10 @@
 """Seed script: creates default credit packs."""
 import asyncio
-import uuid
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import async_session, engine, Base
+from app.database import Base, async_session, engine
 from app.models.credit import CreditPack
-
 
 PACKS = [
     {"name": "Starter Pack", "credits": 10, "price_inr": 30},

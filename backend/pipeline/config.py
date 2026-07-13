@@ -39,9 +39,14 @@ WEIGHT_TEMPO = 0.15
 WEIGHT_VOCAL_STABILITY = 0.10
 
 # ── Mistake detection ─────────────────────────────────────────
-MISTAKE_MERGE_WINDOW = 0.3        # seconds — merge mistakes closer than this
-PITCH_DEVIATION_MEDIUM = 30       # cents — deviation for "medium" severity
-PITCH_DEVIATION_HIGH = 60         # cents — deviation for "high" severity
+# NOTE: thresholds are deliberately forgiving. Human singing (esp. with
+# vibrato) routinely swings ±40-60 cents, so flagging below a half-semitone
+# produces a wall of false positives. We also require a sustained off-pitch
+# stretch and merge over a wide window so each flag is a real, distinct event.
+MISTAKE_MERGE_WINDOW = 2.5        # seconds — merge mistakes closer than this
+PITCH_DEVIATION_MEDIUM = 55       # cents — ~½ semitone, clearly noticeable
+PITCH_DEVIATION_HIGH = 110        # cents — >1 semitone, a wrong note
+PITCH_SUSTAINED_MIN_SEC = 0.35    # off-pitch must persist this long to count
 RHYTHM_DEVIATION_MEDIUM = 0.08    # seconds early/late for "medium"
 RHYTHM_DEVIATION_HIGH = 0.15      # seconds early/late for "high"
 

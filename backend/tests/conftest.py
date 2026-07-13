@@ -1,19 +1,16 @@
-import asyncio
 import os
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
 os.environ["JWT_SECRET"] = "test-secret"
 os.environ["STORAGE_BACKEND"] = "local"
 os.environ["UPLOAD_DIR"] = "test_uploads"
 
-from app.main import app
 from app.database import Base, get_db
-
+from app.main import app
 
 test_engine = create_async_engine("sqlite+aiosqlite:///./test.db")
 TestSession = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)

@@ -6,6 +6,8 @@ export interface User {
   email: string;
   name: string;
   credits: number;
+  plan_type?: string;
+  created_at?: string;
 }
 
 interface AuthState {

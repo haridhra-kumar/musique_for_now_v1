@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
 
 import jwt
 from fastapi import Depends, HTTPException, status

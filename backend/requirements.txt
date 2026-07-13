@@ -1,3 +1,7 @@
+# Core backend dependencies (API, DB, auth, tasks, scoring).
+# Heavy audio-analysis libraries live in requirements-audio.txt so that
+# CI lint/test jobs stay fast and don't need to build crepe/tensorflow.
+
 # Web framework
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
@@ -24,17 +28,8 @@ aiofiles==24.1.0
 boto3==1.35.0
 python-multipart==0.0.19
 
-# Audio processing pipeline
+# Numerics (used by scoring — kept in core so unit tests run without audio libs)
 numpy==1.26.4
-scipy==1.14.1
-librosa==0.10.2
-soundfile==0.12.1
-noisereduce==3.0.3
-crepe==0.0.16
-tensorflow>=2.16.0,<3.0
-
-# Rhythm (optional — install if needed)
-# madmom==0.16.1
 
 # Dev / Testing
 pytest==8.3.4

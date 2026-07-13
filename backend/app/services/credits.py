@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import get_settings
-from ..models.user import User
 from ..models.analysis import Analysis
 from ..models.credit import CreditPack, Transaction
+from ..models.user import User
 
 settings = get_settings()
 
@@ -47,7 +47,7 @@ async def deduct_credit(db: AsyncSession, user: User) -> None:
 
 async def add_credits(db: AsyncSession, user: User, pack_id: uuid.UUID,
                       payment_id: str | None = None) -> int:
-    result = await db.execute(select(CreditPack).where(CreditPack.id == pack_id, CreditPack.active == True))
+    result = await db.execute(select(CreditPack).where(CreditPack.id == pack_id, CreditPack.active.is_(True)))
     pack = result.scalar_one_or_none()
     if not pack:
         raise ValueError("Credit pack not found")
@@ -65,5 +65,5 @@ async def add_credits(db: AsyncSession, user: User, pack_id: uuid.UUID,
 
 
 async def get_packs(db: AsyncSession) -> list[CreditPack]:
-    result = await db.execute(select(CreditPack).where(CreditPack.active == True))
+    result = await db.execute(select(CreditPack).where(CreditPack.active.is_(True)))
     return list(result.scalars().all())

@@ -6,16 +6,15 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import asdict
 
-from .loader import load_audio
-from .quality import check_quality
-from .pitch import detect_pitch
-from .key import detect_key, detect_octave_shift
-from .rhythm import detect_rhythm
-from .scoring import score_pitch, score_rhythm, score_tempo, score_vocal_stability, overall_score
-from .timestamps import map_mistakes
 from .feedback import generate_feedback
+from .key import detect_key, detect_octave_shift
+from .loader import load_audio
+from .pitch import detect_pitch
+from .quality import check_quality
+from .rhythm import detect_rhythm
+from .scoring import overall_score, score_pitch, score_rhythm, score_tempo, score_vocal_stability
+from .timestamps import map_mistakes
 
 logger = logging.getLogger("audiocoach.pipeline")
 

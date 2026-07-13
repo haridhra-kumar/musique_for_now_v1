@@ -54,8 +54,9 @@ async def _save_s3(key: str, content: bytes) -> tuple[str, str]:
 
 
 async def _download_s3(key: str) -> str:
-    import boto3
     import tempfile
+
+    import boto3
     s3 = boto3.client(
         "s3",
         endpoint_url=settings.s3_endpoint_url or None,

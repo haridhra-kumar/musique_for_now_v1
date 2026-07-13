@@ -36,7 +36,11 @@
   --font-serif: "Playfair Display", Georgia, serif;
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+/* NOTE: do NOT add an unlayered `* { margin:0; padding:0 }` reset here.
+   Tailwind v4 Preflight already resets margins/padding inside a cascade
+   layer; an unlayered universal rule outranks every layered utility and
+   silently kills margin/padding utilities (mb-*, mx-auto, p-*) app-wide. */
+*, *::before, *::after { box-sizing: border-box; }
 
 html {
   font-family: var(--font-sans);

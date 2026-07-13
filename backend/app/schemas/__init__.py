@@ -1,3 +1,3 @@
-from .user import *
 from .analysis import *
 from .credit import *
+from .user import *

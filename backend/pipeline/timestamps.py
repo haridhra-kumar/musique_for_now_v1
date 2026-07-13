@@ -56,7 +56,58 @@ def map_mistakes(
 def _extract_pitch_mistakes(
     frames: list[dict], trim_offset: float, out: list[Mistake]
 ) -> None:
+    """Flag only *sustained* off-pitch stretches, not individual frames.
+
+    A single 10 ms frame drifting sharp/flat is normal (vibrato, expression).
+    We only report a mistake when the singer stays off the note for at least
+    PITCH_SUSTAINED_MIN_SEC, and we collapse each such stretch into one event
+    keyed on its worst moment. This keeps the pitch map's drift markers
+    meaningful instead of striping the whole track red.
+    """
     last_flagged_time = -999.0
+
+    # State for the current off-pitch run
+    run_start: float | None = None
+    run_worst_cents = 0.0
+    run_worst_note = ""
+    run_conf = 0.0
+
+    def flush(run_end: float) -> None:
+        nonlocal last_flagged_time, run_start, run_worst_cents, run_worst_note, run_conf
+        if run_start is None:
+            return
+        duration = run_end - run_start
+        long_enough = duration >= cfg.PITCH_SUSTAINED_MIN_SEC
+        spaced_out = (run_start - last_flagged_time) > cfg.MISTAKE_MERGE_WINDOW
+        if long_enough and spaced_out:
+            if run_worst_cents >= cfg.PITCH_DEVIATION_HIGH:
+                severity = "high"
+                desc = (
+                    f"Pitch noticeably off from {run_worst_note} here"
+                    if run_worst_note else "Pitch significantly off-key in this section"
+                )
+                mistake_conf = min(run_conf, 0.9)
+            else:
+                severity = "medium"
+                desc = "Pitch drifts slightly here — ease back onto the note"
+                mistake_conf = min(run_conf * 0.85, 0.8)
+            orig_time = run_start + trim_offset
+            out.append(Mistake(
+                timestamp=_format_time(orig_time),
+                time_seconds=orig_time,
+                type="pitch",
+                severity=severity,
+                description=desc,
+                confidence=mistake_conf,
+            ))
+            last_flagged_time = run_start
+        # reset run
+        run_start = None
+        run_worst_cents = 0.0
+        run_worst_note = ""
+        run_conf = 0.0
+
+    step = cfg.CREPE_STEP_SIZE / 1000.0  # ms → seconds
 
     for f in frames:
         t = f.get("time", 0)
@@ -64,49 +115,22 @@ def _extract_pitch_mistakes(
         cents = abs(f.get("cents_deviation", 0))
         is_voiced = f.get("is_voiced", False)
 
-        if not is_voiced:
+        # Unreliable or in-tune frame ends any active off-pitch run
+        if not is_voiced or conf < cfg.CREPE_CONFIDENCE_THRESHOLD or cents < cfg.PITCH_DEVIATION_MEDIUM:
+            flush(t)
             continue
 
-        if conf < cfg.CREPE_CONFIDENCE_THRESHOLD:
-            if t - last_flagged_time > cfg.MISTAKE_MERGE_WINDOW:
-                orig_time = t + trim_offset
-                out.append(Mistake(
-                    timestamp=_format_time(orig_time),
-                    time_seconds=orig_time,
-                    type="unclear",
-                    severity="low",
-                    description="This section was hard to analyze clearly",
-                    confidence=0.4,
-                ))
-                last_flagged_time = t
-            continue
+        # Frame is voiced, confident, and off-pitch → extend the run
+        if run_start is None:
+            run_start = t
+        if cents > run_worst_cents:
+            run_worst_cents = cents
+            run_worst_note = f.get("nearest_note", "") or run_worst_note
+        run_conf = max(run_conf, conf)
 
-        if cents < cfg.PITCH_DEVIATION_MEDIUM:
-            continue
-
-        if t - last_flagged_time < cfg.MISTAKE_MERGE_WINDOW:
-            continue
-
-        if cents >= cfg.PITCH_DEVIATION_HIGH:
-            severity = "high"
-            note = f.get("nearest_note", "")
-            desc = f"Pitch may need attention — sung noticeably off from {note}" if note else "Pitch significantly off-key in this section"
-            mistake_conf = min(conf, 0.9)
-        else:
-            severity = "medium"
-            desc = "Pitch slightly off — try adjusting your intonation here"
-            mistake_conf = min(conf * 0.85, 0.8)
-
-        orig_time = t + trim_offset
-        out.append(Mistake(
-            timestamp=_format_time(orig_time),
-            time_seconds=orig_time,
-            type="pitch",
-            severity=severity,
-            description=desc,
-            confidence=mistake_conf,
-        ))
-        last_flagged_time = t
+    # Flush a run still open at the end of the file
+    if frames:
+        flush(frames[-1].get("time", 0) + step)
 
 
 def _extract_rhythm_mistakes(

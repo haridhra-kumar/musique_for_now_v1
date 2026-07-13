@@ -1,5 +1,5 @@
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea,
 } from "recharts";
 
 interface PitchDataPoint {
@@ -11,7 +11,7 @@ interface PitchDataPoint {
 
 interface PitchGraphProps {
   data: PitchDataPoint[];
-  mistakes?: { time_seconds: number; type: string }[];
+  mistakes?: { time_seconds: number; type: string; severity?: string }[];
 }
 
 const noteFreqs: Record<string, number> = {
@@ -57,7 +57,10 @@ export default function PitchGraph({ data, mistakes = [] }: PitchGraphProps) {
     timeLabel: formatTime(d.time),
   }));
 
-  const mistakeTimes = new Set(mistakes.filter((m) => m.type === "pitch").map((m) => m.time_seconds));
+  // Total time span, used to size the shaded drift band around each mistake
+  const tSpan = sampled.length > 1 ? sampled[sampled.length - 1].time - sampled[0].time : 1;
+  const bandHalf = Math.max(0.35, tSpan * 0.012); // seconds either side of the mistake
+  const pitchMistakes = mistakes.filter((m) => m.type === "pitch");
 
   return (
     <div className="card">
@@ -78,15 +81,15 @@ export default function PitchGraph({ data, mistakes = [] }: PitchGraphProps) {
           </span>
         </div>
       </div>
-      <div className="h-64 md:h-72">
+      <div className="h-[340px] md:h-[440px]">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+          <LineChart data={chartData} margin={{ top: 10, right: 16, left: 4, bottom: 8 }}>
             <CartesianGrid stroke="#1a1a1a" />
             <XAxis dataKey="time" tickFormatter={formatTime} stroke="#1a1a1a"
-              tick={{ fontSize: 10, fill: "#3a3530" }} axisLine={{ stroke: "#1a1a1a" }} />
+              tick={{ fontSize: 11, fill: "#3a3530" }} axisLine={{ stroke: "#1a1a1a" }} minTickGap={30} />
             <YAxis domain={[minFreq, maxFreq]} stroke="#1a1a1a"
-              tick={{ fontSize: 10, fill: "#3a3530" }} axisLine={{ stroke: "#1a1a1a" }}
-              tickFormatter={(v: number) => `${Math.round(v)}Hz`} width={50} />
+              tick={{ fontSize: 11, fill: "#3a3530" }} axisLine={{ stroke: "#1a1a1a" }}
+              tickFormatter={(v: number) => `${Math.round(v)}Hz`} width={52} />
             <Tooltip contentStyle={{
               background: "#111", border: "1px solid #1e1e1e", borderRadius: "6px", color: "#e8e0d0", fontSize: "11px",
             }} formatter={(value: unknown, name: string) => {
@@ -97,14 +100,25 @@ export default function PitchGraph({ data, mistakes = [] }: PitchGraphProps) {
               <ReferenceLine key={note} y={freq} stroke="#2a2520" strokeDasharray="4 4"
                 label={{ value: note, position: "left", fill: "#3a3530", fontSize: 9 }} />
             ))}
-            {[...mistakeTimes].map((t) => (
-              <ReferenceLine key={`m-${t}`} x={t} stroke="#e06040" strokeOpacity={0.4} strokeDasharray="3 3" />
+            {pitchMistakes.map((m, i) => (
+              <ReferenceArea
+                key={`drift-${i}`}
+                x1={m.time_seconds - bandHalf}
+                x2={m.time_seconds + bandHalf}
+                fill="#8a3020"
+                fillOpacity={m.severity === "high" ? 0.28 : 0.16}
+                stroke="#e06040"
+                strokeOpacity={0.25}
+              />
             ))}
             <Line type="monotone" dataKey="freq" stroke="#c9a84c" strokeWidth={1.5}
               dot={false} connectNulls={false} animationDuration={2000} />
           </LineChart>
         </ResponsiveContainer>
       </div>
+      {pitchMistakes.length === 0 && (
+        <p className="text-[11px] text-text-faint mt-3">No pitch drift detected — you stayed on the notes.</p>
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -8,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .api.router import api_router
 from .config import get_settings
-from .database import engine, Base
+from .database import Base, engine
 
 settings = get_settings()
 
@@ -38,7 +39,6 @@ app.add_middleware(
 
 app.include_router(api_router)
 
-import os
 if os.path.isdir(settings.upload_dir):
     app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
 

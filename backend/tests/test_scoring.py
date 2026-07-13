@@ -1,7 +1,6 @@
 """Unit tests for the scoring engine with synthetic inputs."""
-import pytest
 
-from pipeline.scoring import score_pitch, score_rhythm, score_tempo, score_vocal_stability, overall_score
+from pipeline.scoring import overall_score, score_pitch, score_rhythm, score_vocal_stability
 
 
 def _make_frames(n: int, confidence: float = 0.9, cents: float = 5.0) -> list[dict]:

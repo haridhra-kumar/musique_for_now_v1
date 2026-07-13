@@ -7,7 +7,7 @@ from ..database import get_db
 from ..dependencies import get_current_user
 from ..models.user import User
 from ..schemas.credit import CreditPackOut, PurchaseRequest, PurchaseResponse
-from ..services.credits import get_packs, add_credits
+from ..services.credits import add_credits, get_packs
 
 router = APIRouter(prefix="/credits", tags=["credits"])
 

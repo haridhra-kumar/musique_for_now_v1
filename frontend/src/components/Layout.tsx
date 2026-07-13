@@ -192,7 +192,7 @@ export default function Layout() {
         </aside>
 
         <main className="min-w-0 overflow-x-hidden">
-          <div className="max-w-[1100px] p-4 md:p-8">
+          <div className="max-w-[1080px] mx-auto px-5 py-6 md:px-10 md:py-9">
             <AnimatePresence mode="wait">
               <Outlet />
             </AnimatePresence>

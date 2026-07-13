@@ -5,7 +5,7 @@ Measures beat regularity and tempo consistency relative to the singer's own temp
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import librosa
 import numpy as np
