@@ -1,199 +1,198 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useAuthStore } from "../stores/auth";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { userApi } from "../lib/api";
 
 const navItems = [
-  { to: "/", label: "Dashboard", icon: "grid" },
-  { to: "/upload", label: "Upload", icon: "upload" },
-  { to: "/history", label: "History", icon: "clock" },
-  { to: "/profile", label: "Profile", icon: "user" },
+  { to: "/", label: "Dashboard", icon: "dashboard" },
+  { to: "/upload", label: "New session", icon: "session" },
+  { to: "/history", label: "History", icon: "history" },
+  { to: "/progress", label: "Progress", icon: "progress" },
+  { to: "/settings", label: "Settings", icon: "settings" },
 ];
 
 const icons: Record<string, JSX.Element> = {
-  grid: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="7" height="7" rx="1" />
-      <rect x="14" y="3" width="7" height="7" rx="1" />
-      <rect x="3" y="14" width="7" height="7" rx="1" />
-      <rect x="14" y="14" width="7" height="7" rx="1" />
+  dashboard: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
     </svg>
   ),
-  upload: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <polyline points="17 8 12 3 7 8" />
-      <line x1="12" y1="3" x2="12" y2="15" />
+  session: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3v12" />
+      <path d="M7 8l5-5 5 5" />
+      <path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" />
     </svg>
   ),
-  clock: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <polyline points="12 6 12 12 16 14" />
+  history: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <polyline points="12 7 12 12 15.5 13.5" />
     </svg>
   ),
-  user: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
+  progress: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 17l6-6 4 4 8-8" />
+      <path d="M15 7h6v6" />
+    </svg>
+  ),
+  settings: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
   ),
 };
+
+interface LastSession {
+  id: string;
+  file_name: string;
+  created_at: string;
+  overall_score: number | null;
+}
+
+function timeAgo(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).toLowerCase().replace(" ", "");
+  if (isToday) return `Today, ${time}`;
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) return `Yesterday, ${time}`;
+  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+}
 
 export default function Layout() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [lastSession, setLastSession] = useState<LastSession | null>(null);
+
+  useEffect(() => {
+    userApi
+      .history()
+      .then((res) => {
+        const done = (res.data as LastSession[]).filter((s) => s.overall_score != null);
+        if (done.length > 0) setLastSession(done[0]);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
 
-  return (
-    <div className="min-h-screen flex bg-bg-primary">
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 border-r border-border-glass bg-bg-secondary/50 backdrop-blur-xl">
-        <div className="p-6 border-b border-border-glass">
-          <NavLink to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-              style={{ background: "linear-gradient(135deg, #6366f1, #a855f7)" }}>
-              <span role="img" aria-label="music">&#9835;</span>
-            </div>
-            <div>
-              <h1 className="text-lg font-bold gradient-text">AudioCoach</h1>
-              <p className="text-xs text-text-muted -mt-0.5">AI</p>
-            </div>
-          </NavLink>
-        </div>
-
-        <nav className="flex-1 p-4 space-y-1">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === "/"}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  isActive
-                    ? "bg-accent-blue/15 text-accent-blue shadow-lg shadow-accent-blue/5"
-                    : "text-text-secondary hover:text-text-primary hover:bg-white/5"
-                }`
-              }
-            >
-              {icons[item.icon]}
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-
-        <div className="p-4 border-t border-border-glass">
-          <div className="glass rounded-xl p-4 mb-3">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold"
-                style={{ background: "linear-gradient(135deg, #6366f1, #a855f7)" }}>
-                {user?.name?.charAt(0).toUpperCase() || "U"}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{user?.name || "User"}</p>
-                <p className="text-xs text-text-muted truncate">{user?.email || ""}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-text-secondary">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 6v6l4 2" />
-              </svg>
-              <span>{user?.credits ?? 0} credits</span>
-            </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm text-text-secondary hover:text-error hover:bg-error/10 transition-all"
+  const sidebarNav = (onClickItem?: () => void) => (
+    <>
+      <div className="px-4 mb-6">
+        <p className="nav-label">Menu</p>
+        {navItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.to === "/"}
+            onClick={onClickItem}
+            className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-            Sign out
-          </button>
-        </div>
-      </aside>
+            {icons[item.icon]}
+            {item.label}
+          </NavLink>
+        ))}
+      </div>
 
-      {/* Mobile header + bottom nav */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Mobile header */}
-        <header className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-border-glass bg-bg-secondary/80 backdrop-blur-xl sticky top-0 z-40">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
-              style={{ background: "linear-gradient(135deg, #6366f1, #a855f7)" }}>
-              <span role="img" aria-label="music">&#9835;</span>
+      {lastSession && (
+        <div className="mt-auto px-4 pt-6 border-t border-[#1a1a1a]">
+          <p className="nav-label mb-3">Last session</p>
+          <div className="px-3">
+            <p className="text-[12px] text-text-soft mb-1 truncate">{lastSession.file_name}</p>
+            <p className="text-[11px] text-text-faint mb-2.5">{timeAgo(lastSession.created_at)}</p>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-1 bg-[#1a1a1a] rounded-sm overflow-hidden">
+                <div
+                  className="h-full bg-accent rounded-sm"
+                  style={{ width: `${Math.round(lastSession.overall_score ?? 0)}%` }}
+                />
+              </div>
+              <span className="text-[12px] text-accent font-medium">
+                {Math.round(lastSession.overall_score ?? 0)}%
+              </span>
             </div>
-            <span className="font-bold gradient-text">AudioCoach AI</span>
           </div>
-          <button onClick={() => setMobileOpen(!mobileOpen)} className="p-2 rounded-lg hover:bg-white/5">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        </div>
+      )}
+    </>
+  );
+
+  return (
+    <div className="min-h-screen bg-bg-primary">
+      {/* Topbar */}
+      <header className="h-14 bg-bg-primary border-b border-border px-4 md:px-8 flex items-center justify-between sticky top-0 z-40">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="lg:hidden p-1.5 text-text-dim hover:text-text-secondary transition-colors"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
               {mobileOpen ? (
                 <path d="M18 6L6 18M6 6l12 12" />
               ) : (
                 <>
-                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="7" x2="21" y2="7" />
                   <line x1="3" y1="12" x2="21" y2="12" />
-                  <line x1="3" y1="18" x2="21" y2="18" />
+                  <line x1="3" y1="17" x2="21" y2="17" />
                 </>
               )}
             </svg>
           </button>
-        </header>
+          <NavLink to="/" className="logo-serif text-lg">
+            musique<span>.</span>
+          </NavLink>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <span className="hidden sm:block text-[13px] text-text-dim">{user?.name || "User"}</span>
+          <div className="avatar-pill">{user?.name?.charAt(0).toUpperCase() || "U"}</div>
+          <button
+            onClick={handleLogout}
+            title="Sign out"
+            className="ml-1 p-1.5 text-text-faint hover:text-error transition-colors"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </button>
+        </div>
+      </header>
 
-        {/* Mobile dropdown menu */}
-        <AnimatePresence>
-          {mobileOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="lg:hidden border-b border-border-glass bg-bg-secondary/95 backdrop-blur-xl overflow-hidden z-30"
-            >
-              <nav className="p-3 space-y-1">
-                {navItems.map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    end={item.to === "/"}
-                    onClick={() => setMobileOpen(false)}
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                        isActive
-                          ? "bg-accent-blue/15 text-accent-blue"
-                          : "text-text-secondary hover:text-text-primary hover:bg-white/5"
-                      }`
-                    }
-                  >
-                    {icons[item.icon]}
-                    {item.label}
-                  </NavLink>
-                ))}
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-text-secondary hover:text-error hover:bg-error/10 transition-all"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                    <polyline points="16 17 21 12 16 7" />
-                    <line x1="21" y1="12" x2="9" y2="12" />
-                  </svg>
-                  Sign out
-                </button>
-              </nav>
-            </motion.div>
-          )}
-        </AnimatePresence>
+      {/* Mobile nav dropdown */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="lg:hidden border-b border-border bg-bg-sidebar overflow-hidden sticky top-14 z-30"
+          >
+            <nav className="py-4 flex flex-col">{sidebarNav(() => setMobileOpen(false))}</nav>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-        {/* Main content */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
+      {/* Sidebar + content */}
+      <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] min-h-[calc(100vh-56px)]">
+        <aside className="hidden lg:flex flex-col border-r border-[#1a1a1a] bg-bg-sidebar py-6 pb-8">
+          {sidebarNav()}
+        </aside>
+
+        <main className="min-w-0 overflow-x-hidden">
+          <div className="max-w-[1100px] p-4 md:p-8">
             <AnimatePresence mode="wait">
               <Outlet />
             </AnimatePresence>

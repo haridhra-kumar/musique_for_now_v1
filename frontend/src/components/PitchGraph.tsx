@@ -1,12 +1,5 @@
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from "recharts";
 
 interface PitchDataPoint {
@@ -38,13 +31,12 @@ function formatTime(seconds: number): string {
 export default function PitchGraph({ data, mistakes = [] }: PitchGraphProps) {
   if (!data || data.length === 0) {
     return (
-      <div className="glass rounded-2xl p-6 flex items-center justify-center h-64">
-        <p className="text-text-muted">No pitch data available</p>
+      <div className="card p-5 flex items-center justify-center h-56">
+        <p className="text-sm text-text-muted">No pitch data available</p>
       </div>
     );
   }
 
-  // Downsample for performance if too many points
   const maxPoints = 500;
   const step = Math.max(1, Math.floor(data.length / maxPoints));
   const sampled = data.filter((_, i) => i % step === 0);
@@ -53,10 +45,9 @@ export default function PitchGraph({ data, mistakes = [] }: PitchGraphProps) {
   const minFreq = Math.max(50, Math.min(...freqs) * 0.8);
   const maxFreq = Math.min(1200, Math.max(...freqs) * 1.2);
 
-  // Pick note reference lines within range
   const refNotes = Object.entries(noteFreqs)
     .filter(([, f]) => f >= minFreq && f <= maxFreq)
-    .filter((_, i) => i % 2 === 0); // every other note to avoid clutter
+    .filter((_, i) => i % 2 === 0);
 
   const chartData = sampled.map((d) => ({
     time: d.time,
@@ -69,81 +60,48 @@ export default function PitchGraph({ data, mistakes = [] }: PitchGraphProps) {
   const mistakeTimes = new Set(mistakes.filter((m) => m.type === "pitch").map((m) => m.time_seconds));
 
   return (
-    <div className="glass rounded-2xl p-4 md:p-6">
-      <h3 className="text-lg font-semibold mb-4 gradient-text-blue">Pitch Analysis</h3>
-      <div className="h-72 md:h-80">
+    <div className="card">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <p className="card-title !mb-0">Timestamped pitch map</p>
+        <div className="flex items-center gap-4 text-[11px] text-text-muted">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full" style={{ background: "#c9a84c" }} />
+            Your voice
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full" style={{ background: "#2a2520" }} />
+            Reference notes
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-4 h-1.5 rounded-sm" style={{ background: "#8a3020" }} />
+            Drift zone
+          </span>
+        </div>
+      </div>
+      <div className="h-64 md:h-72">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-            <defs>
-              <linearGradient id="pitchGradient" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#22d3ee" />
-                <stop offset="50%" stopColor="#6366f1" />
-                <stop offset="100%" stopColor="#a855f7" />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-            <XAxis
-              dataKey="time"
-              tickFormatter={formatTime}
-              stroke="rgba(255,255,255,0.3)"
-              tick={{ fontSize: 11, fill: "#64748b" }}
-              axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
-            />
-            <YAxis
-              domain={[minFreq, maxFreq]}
-              stroke="rgba(255,255,255,0.3)"
-              tick={{ fontSize: 11, fill: "#64748b" }}
-              axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
-              tickFormatter={(v: number) => `${Math.round(v)}Hz`}
-              width={55}
-            />
-            <Tooltip
-              contentStyle={{
-                background: "rgba(17, 17, 40, 0.95)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: "12px",
-                backdropFilter: "blur(20px)",
-                color: "#f1f5f9",
-                fontSize: "13px",
-              }}
-              formatter={(value: unknown, name: string) => {
-                if (name === "freq" && typeof value === "number") return [`${Math.round(value)} Hz`, "Frequency"];
-                return [String(value ?? ""), name];
-              }}
-              labelFormatter={(label: number) => formatTime(label)}
-            />
+            <CartesianGrid stroke="#1a1a1a" />
+            <XAxis dataKey="time" tickFormatter={formatTime} stroke="#1a1a1a"
+              tick={{ fontSize: 10, fill: "#3a3530" }} axisLine={{ stroke: "#1a1a1a" }} />
+            <YAxis domain={[minFreq, maxFreq]} stroke="#1a1a1a"
+              tick={{ fontSize: 10, fill: "#3a3530" }} axisLine={{ stroke: "#1a1a1a" }}
+              tickFormatter={(v: number) => `${Math.round(v)}Hz`} width={50} />
+            <Tooltip contentStyle={{
+              background: "#111", border: "1px solid #1e1e1e", borderRadius: "6px", color: "#e8e0d0", fontSize: "11px",
+            }} formatter={(value: unknown, name: string) => {
+              if (name === "freq" && typeof value === "number") return [`${Math.round(value)} Hz`, "Frequency"];
+              return [String(value ?? ""), name];
+            }} labelFormatter={(label: number) => formatTime(label)} />
             {refNotes.map(([note, freq]) => (
-              <ReferenceLine
-                key={note}
-                y={freq}
-                stroke="rgba(99, 102, 241, 0.15)"
-                strokeDasharray="4 4"
-                label={{
-                  value: note,
-                  position: "left",
-                  fill: "#64748b",
-                  fontSize: 10,
-                }}
-              />
+              <ReferenceLine key={note} y={freq} stroke="#2a2520" strokeDasharray="4 4"
+                label={{ value: note, position: "left", fill: "#3a3530", fontSize: 9 }} />
             ))}
-            {/* Mistake markers */}
             {[...mistakeTimes].map((t) => (
-              <ReferenceLine
-                key={`mistake-${t}`}
-                x={t}
-                stroke="rgba(239, 68, 68, 0.4)"
-                strokeDasharray="3 3"
-              />
+              <ReferenceLine key={`m-${t}`} x={t} stroke="#e06040" strokeOpacity={0.4} strokeDasharray="3 3" />
             ))}
-            <Line
-              type="monotone"
-              dataKey="freq"
-              stroke="url(#pitchGradient)"
-              strokeWidth={2}
-              dot={false}
-              connectNulls={false}
-              animationDuration={2000}
-            />
+            <Line type="monotone" dataKey="freq" stroke="#c9a84c" strokeWidth={1.5}
+              dot={false} connectNulls={false} animationDuration={2000} />
           </LineChart>
         </ResponsiveContainer>
       </div>

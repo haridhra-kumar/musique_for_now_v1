@@ -24,6 +24,26 @@ sync_engine = create_engine(sync_url)
 SyncSession = sessionmaker(bind=sync_engine)
 
 
+def to_native(obj):
+    """Recursively convert numpy scalars/arrays to plain Python types so the
+    result dict can be JSON-serialized by the DB driver."""
+    import numpy as np
+
+    if isinstance(obj, dict):
+        return {k: to_native(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [to_native(v) for v in obj]
+    if isinstance(obj, np.ndarray):
+        return [to_native(v) for v in obj.tolist()]
+    if isinstance(obj, np.bool_):
+        return bool(obj)
+    if isinstance(obj, np.integer):
+        return int(obj)
+    if isinstance(obj, np.floating):
+        return float(obj)
+    return obj
+
+
 @celery_app.task(name="tasks.analyze_task.run_analysis", bind=True, max_retries=2)
 def run_analysis(self, analysis_id: str, storage_key: str) -> dict:
     from app.services.storage import get_file_path
@@ -39,7 +59,7 @@ def run_analysis(self, analysis_id: str, storage_key: str) -> dict:
         file_path = asyncio.run(get_file_path(storage_key))
 
         logger.info("Running pipeline on %s", file_path)
-        result = analyze(file_path)
+        result = to_native(analyze(file_path))
 
         analysis.status = "completed"
         analysis.overall_score = result["overall_score"]

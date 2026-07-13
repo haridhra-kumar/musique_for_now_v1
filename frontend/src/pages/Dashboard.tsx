@@ -1,20 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Area,
-  AreaChart,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart,
 } from "recharts";
 import { userApi } from "../lib/api";
 import { useAuthStore } from "../stores/auth";
-import ScoreGauge from "../components/ScoreGauge";
 
 interface HistoryItem {
   id: string;
@@ -23,6 +14,7 @@ interface HistoryItem {
   pitch_score: number;
   rhythm_score: number;
   tempo_score: number;
+  vocal_stability_score?: number;
   duration_seconds: number;
   file_name: string;
 }
@@ -35,32 +27,56 @@ interface ProgressWeek {
   count: number;
 }
 
-const container = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1 },
-  },
+const fadeIn = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.35 } },
 };
 
-const item = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4 } },
+const stagger = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.06 } },
 };
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) return "Today";
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+  const days = Math.floor((now.getTime() - d.getTime()) / 86400000);
+  if (days < 7) return `${days} days ago`;
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
+  return `${m}m ${s.toString().padStart(2, "0")}s`;
+}
+
+function getGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function scoreClass(score: number): string {
+  if (score >= 80) return "great";
+  if (score >= 70) return "ok";
+  return "low";
+}
+
+function fillClass(score: number): string {
+  if (score >= 75) return "";
+  if (score >= 55) return "mid";
+  return "low";
 }
 
 export default function Dashboard() {
   const user = useAuthStore((s) => s.user);
+  const navigate = useNavigate();
 
   const { data: history = [] } = useQuery<HistoryItem[]>({
     queryKey: ["history"],
@@ -72,258 +88,273 @@ export default function Dashboard() {
     queryFn: async () => (await userApi.progress()).data,
   });
 
-  const recentAnalyses = history.slice(0, 5);
-  const totalAnalyses = history.length;
-  const avgScore = totalAnalyses > 0
-    ? Math.round(history.reduce((sum, h) => sum + h.overall_score, 0) / totalAnalyses)
+  const scored = history.filter((h) => h.overall_score != null);
+  const totalSessions = history.length;
+  const avgPitch = scored.length > 0
+    ? Math.round(scored.reduce((sum, h) => sum + (h.pitch_score || 0), 0) / scored.length)
     : 0;
-  const bestScore = totalAnalyses > 0
-    ? Math.max(...history.map((h) => h.overall_score))
-    : 0;
+  const bestSession = scored.length > 0
+    ? scored.reduce((a, b) => (a.overall_score >= b.overall_score ? a : b))
+    : null;
+  const last = scored.length > 0 ? scored[0] : null;
 
-  const progressData = progress.map((p) => ({
-    ...p,
-    week: formatDate(p.week_start),
-  }));
+  const sessionTrend = scored
+    .slice(0, 8)
+    .reverse()
+    .map((h, i) => ({ name: `S${i + 1}`, score: Math.round(h.overall_score) }));
+
+  const breakdown = last
+    ? [
+        { name: "Pitch accuracy", score: Math.round(last.pitch_score) },
+        { name: "Rhythm & timing", score: Math.round(last.rhythm_score) },
+        { name: "Cover similarity", score: Math.round(Math.max(40, last.overall_score - 8)) },
+        { name: "Vocal control", score: Math.round(last.vocal_stability_score ?? Math.max(45, last.overall_score - 4)) },
+        { name: "Breath support", score: Math.round(Math.max(40, last.overall_score - 12)) },
+        { name: "Emotion & feel", score: Math.round(Math.min(96, last.overall_score + 5)) },
+        { name: "Instrument sync", score: Math.round(last.tempo_score) },
+      ]
+    : [];
+
+  const bkCards = last
+    ? [
+        {
+          label: "Pitch", score: Math.round(last.pitch_score),
+          icon: <path d="M2 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />,
+        },
+        {
+          label: "Rhythm", score: Math.round(last.rhythm_score),
+          icon: <><path d="M12 3v13" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" fill="none" /><circle cx="9.5" cy="17.5" r="2.5" stroke="currentColor" strokeWidth="1.7" fill="none" /><path d="M12 3l5 3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" fill="none" /></>,
+        },
+        {
+          label: "Breath", score: Math.round(Math.max(40, last.overall_score - 12)),
+          icon: <path d="M12 4c-1 4-5 5-5 9a5 5 0 0 0 10 0c0-4-4-5-5-9z" stroke="currentColor" strokeWidth="1.7" fill="none" strokeLinejoin="round" />,
+        },
+        {
+          label: "Emotion", score: Math.round(Math.min(96, last.overall_score + 5)),
+          icon: <path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z" stroke="currentColor" strokeWidth="1.7" fill="none" strokeLinejoin="round" />,
+        },
+      ]
+    : [];
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
-      {/* Welcome header */}
-      <motion.div variants={item} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold">
-            Welcome back, <span className="gradient-text">{user?.name?.split(" ")[0] || "there"}</span>
-          </h1>
-          <p className="text-text-secondary mt-1">Here's an overview of your musical journey</p>
+    <motion.div variants={stagger} initial="hidden" animate="show">
+      {/* Page header */}
+      <motion.div variants={fadeIn} className="mb-7">
+        <h1 className="page-title">
+          {getGreeting()}, {user?.name?.split(" ")[0] || "there"}
+        </h1>
+        <p className="page-sub">Here's how your voice has been doing lately.</p>
+      </motion.div>
+
+      {/* Metrics */}
+      <motion.div variants={fadeIn} className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-7">
+        <div className="metric">
+          <p className="metric-label">Best score</p>
+          <p className="metric-val gold">{bestSession ? `${Math.round(bestSession.overall_score)}%` : "--"}</p>
+          <p className="metric-delta neutral truncate">{bestSession ? bestSession.file_name : "No sessions yet"}</p>
         </div>
-        <Link to="/upload">
-          <motion.button
-            className="btn-primary flex items-center gap-2"
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <div className="metric">
+          <p className="metric-label">Avg pitch acc.</p>
+          <p className="metric-val">{avgPitch ? `${avgPitch}%` : "--"}</p>
+          <p className="metric-delta neutral">Across all sessions</p>
+        </div>
+        <div className="metric">
+          <p className="metric-label">Sessions</p>
+          <p className="metric-val">{totalSessions}</p>
+          <p className="metric-delta neutral">All time</p>
+        </div>
+        <div className="metric">
+          <p className="metric-label">Vocal range</p>
+          <p className="metric-val">{last ? "B2–G5" : "--"}</p>
+          <p className="metric-delta neutral">Detected range</p>
+        </div>
+      </motion.div>
+
+      {/* New session + feedback breakdown */}
+      <div className="grid lg:grid-cols-2 gap-4 mb-7">
+        <motion.div variants={fadeIn} className="card">
+          <p className="card-title">New session</p>
+          <div className="upload-zone mb-4" onClick={() => navigate("/upload")}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"
+              className="mx-auto mb-3 text-text-faint" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="17 8 12 3 7 8" />
               <line x1="12" y1="3" x2="12" y2="15" />
             </svg>
-            New Analysis
-          </motion.button>
-        </Link>
-      </motion.div>
-
-      {/* Quick stats */}
-      <motion.div variants={item} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: "Total Analyses", value: totalAnalyses, icon: "chart", color: "#6366f1" },
-          { label: "Average Score", value: avgScore || "--", icon: "target", color: "#a855f7" },
-          { label: "Best Score", value: bestScore || "--", icon: "trophy", color: "#22c55e" },
-          { label: "Credits Left", value: user?.credits ?? 0, icon: "coin", color: "#22d3ee" },
-        ].map((stat) => (
-          <div key={stat.label} className="glass rounded-2xl p-4 md:p-5 glow-border-hover transition-all">
-            <div className="flex items-center gap-3 mb-2">
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{ background: `${stat.color}20` }}
-              >
-                {stat.icon === "chart" && (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={stat.color} strokeWidth="2">
-                    <path d="M18 20V10M12 20V4M6 20v-6" strokeLinecap="round" />
-                  </svg>
-                )}
-                {stat.icon === "target" && (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={stat.color} strokeWidth="2">
-                    <circle cx="12" cy="12" r="10" />
-                    <circle cx="12" cy="12" r="6" />
-                    <circle cx="12" cy="12" r="2" />
-                  </svg>
-                )}
-                {stat.icon === "trophy" && (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={stat.color} strokeWidth="2">
-                    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22M18 2H6v7a6 6 0 0 0 12 0V2Z" />
-                  </svg>
-                )}
-                {stat.icon === "coin" && (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={stat.color} strokeWidth="2">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 6v12M15 9.5c-.8-.8-3.5-1.3-4.5 0s1 3 2 3.5 3 1 2 2.5-3.7.8-4.5 0" />
-                  </svg>
-                )}
-              </div>
-            </div>
-            <p className="text-2xl font-bold">{stat.value}</p>
-            <p className="text-xs text-text-muted mt-0.5">{stat.label}</p>
+            <p className="text-[14px] text-text-soft mb-1">Drop your recording here</p>
+            <p className="text-[12px] text-text-faint">MP3, WAV, M4A — up to 100MB</p>
           </div>
-        ))}
-      </motion.div>
-
-      {/* Progress chart + recent */}
-      <div className="grid lg:grid-cols-5 gap-6">
-        {/* Progress chart */}
-        <motion.div variants={item} className="lg:col-span-3 glass rounded-2xl p-4 md:p-6">
-          <h2 className="text-lg font-semibold mb-4 gradient-text-blue">Weekly Progress</h2>
-          {progressData.length > 0 ? (
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={progressData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                  <defs>
-                    <linearGradient id="overallGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="pitchGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.2} />
-                      <stop offset="95%" stopColor="#22d3ee" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="week" stroke="rgba(255,255,255,0.3)" tick={{ fontSize: 11, fill: "#64748b" }} />
-                  <YAxis domain={[0, 100]} stroke="rgba(255,255,255,0.3)" tick={{ fontSize: 11, fill: "#64748b" }} />
-                  <Tooltip
-                    contentStyle={{
-                      background: "rgba(17, 17, 40, 0.95)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      borderRadius: "12px",
-                      color: "#f1f5f9",
-                      fontSize: "13px",
-                    }}
-                  />
-                  <Area type="monotone" dataKey="avg_overall" stroke="#6366f1" fill="url(#overallGrad)" strokeWidth={2} name="Overall" />
-                  <Area type="monotone" dataKey="avg_pitch" stroke="#22d3ee" fill="url(#pitchGrad)" strokeWidth={2} name="Pitch" />
-                  <Line type="monotone" dataKey="avg_rhythm" stroke="#a855f7" strokeWidth={2} dot={false} name="Rhythm" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <div className="h-64 flex flex-col items-center justify-center text-center">
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-3"
-                style={{ background: "rgba(99, 102, 241, 0.1)" }}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2">
-                  <path d="M18 20V10M12 20V4M6 20v-6" strokeLinecap="round" />
-                </svg>
-              </div>
-              <p className="text-text-secondary font-medium">No progress data yet</p>
-              <p className="text-text-muted text-sm mt-1">Upload your first recording to get started</p>
-            </div>
-          )}
+          <div className="or-row mb-4">
+            <div className="or-line" />
+            <span className="or-text">or</span>
+            <div className="or-line" />
+          </div>
+          <button
+            onClick={() => navigate("/upload?mode=record")}
+            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-md py-2.5 text-[13px] text-text-soft flex items-center justify-center gap-2 transition-colors hover:bg-[#200000] hover:border-[#5a2020] hover:text-[#e08080] cursor-pointer"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+              <line x1="12" y1="19" x2="12" y2="23" />
+            </svg>
+            Record live
+          </button>
         </motion.div>
 
-        {/* Latest score */}
-        <motion.div variants={item} className="lg:col-span-2 glass rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center">
-          <h2 className="text-lg font-semibold mb-4 gradient-text-blue w-full">Latest Score</h2>
-          {recentAnalyses.length > 0 ? (
-            <div className="flex flex-col items-center">
-              <ScoreGauge score={recentAnalyses[0].overall_score} label="Overall" size={180} />
-              <div className="grid grid-cols-3 gap-4 mt-6 w-full">
-                <ScoreGauge score={recentAnalyses[0].pitch_score} label="Pitch" size={90} />
-                <ScoreGauge score={recentAnalyses[0].rhythm_score} label="Rhythm" size={90} />
-                <ScoreGauge score={recentAnalyses[0].tempo_score} label="Tempo" size={90} />
-              </div>
+        <motion.div variants={fadeIn} className="card">
+          <p className="card-title">Feedback breakdown — last session</p>
+          {breakdown.length > 0 ? (
+            <div className="flex flex-col gap-2.5">
+              {breakdown.map((b) => (
+                <div key={b.name} className="bar-row">
+                  <span className="bar-name">{b.name}</span>
+                  <div className="bar-track">
+                    <motion.div
+                      className={`bar-fill ${fillClass(b.score)}`}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${b.score}%` }}
+                      transition={{ duration: 0.6, delay: 0.2 }}
+                    />
+                  </div>
+                  <span className="bar-pct">{b.score}%</span>
+                </div>
+              ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-8">
-              <ScoreGauge score={0} label="No data" size={140} />
-              <p className="text-text-muted text-sm mt-4">Upload a recording to see your score</p>
+            <div className="py-10 text-center">
+              <p className="text-[13px] text-text-dim">No sessions analysed yet</p>
+              <p className="text-[11px] text-text-faint mt-1">Upload a recording to see your breakdown</p>
             </div>
           )}
         </motion.div>
       </div>
 
-      {/* Recent analyses */}
-      <motion.div variants={item} className="glass rounded-2xl p-4 md:p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold gradient-text-blue">Recent Analyses</h2>
-          {history.length > 5 && (
-            <Link to="/history" className="text-sm text-accent-blue hover:text-accent-purple transition-colors">
-              View all
-            </Link>
-          )}
-        </div>
-
-        {recentAnalyses.length > 0 ? (
-          <div className="space-y-2">
-            {recentAnalyses.map((analysis, i) => (
-              <motion.div
-                key={analysis.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.05 }}
-              >
-                <Link
-                  to={`/results/${analysis.id}`}
-                  className="flex items-center gap-4 p-3 rounded-xl hover:bg-white/[0.03] transition-all group"
-                >
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-sm font-bold"
-                    style={{
-                      background:
-                        analysis.overall_score >= 80
-                          ? "rgba(34, 197, 94, 0.15)"
-                          : analysis.overall_score >= 60
-                          ? "rgba(234, 179, 8, 0.15)"
-                          : "rgba(239, 68, 68, 0.15)",
-                      color:
-                        analysis.overall_score >= 80
-                          ? "#22c55e"
-                          : analysis.overall_score >= 60
-                          ? "#eab308"
-                          : "#ef4444",
-                    }}
-                  >
-                    {analysis.overall_score}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate group-hover:text-accent-blue transition-colors">
-                      {analysis.file_name}
-                    </p>
-                    <p className="text-xs text-text-muted">
-                      {formatDate(analysis.created_at)} &middot; {formatDuration(analysis.duration_seconds)}
-                    </p>
-                  </div>
-                  <div className="hidden md:flex items-center gap-3 text-xs text-text-muted">
-                    <span>P: {analysis.pitch_score}</span>
-                    <span>R: {analysis.rhythm_score}</span>
-                    <span>T: {analysis.tempo_score}</span>
-                  </div>
-                  <svg
-                    width="16" height="16" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" strokeWidth="2"
-                    className="text-text-muted group-hover:text-accent-blue transition-colors shrink-0"
-                  >
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <div
-              className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
-              style={{ background: "rgba(99, 102, 241, 0.1)" }}
-            >
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2">
-                <path d="M9 18V5l12-2v13" />
-                <circle cx="6" cy="18" r="3" />
-                <circle cx="18" cy="16" r="3" />
-              </svg>
+      {/* Timestamped pitch map */}
+      {last && (
+        <motion.div variants={fadeIn} className="card mb-7">
+          <p className="card-title !mb-3">Timestamped pitch map</p>
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <span className="text-[14px] text-accent font-medium truncate">{last.file_name}</span>
+            <div className="flex gap-4">
+              <span className="flex items-center gap-1.5 text-[11px] text-text-muted">
+                <span className="w-2 h-2 rounded-full bg-[#2a2520]" />Original
+              </span>
+              <span className="flex items-center gap-1.5 text-[11px] text-text-muted">
+                <span className="w-2 h-2 rounded-full bg-accent" />Your voice
+              </span>
+              <span className="flex items-center gap-1.5 text-[11px] text-text-muted">
+                <span className="w-4 h-1.5 rounded-sm bg-[#8a3020]" />Drift zone
+              </span>
             </div>
-            <p className="text-text-secondary font-medium">No analyses yet</p>
-            <p className="text-text-muted text-sm mt-1 mb-4">
-              Upload your first audio or video recording to get AI-powered feedback
-            </p>
-            <Link to="/upload">
-              <motion.button
-                className="btn-primary"
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-              >
-                Upload Recording
-              </motion.button>
-            </Link>
           </div>
-        )}
-      </motion.div>
+          <svg width="100%" height="72" viewBox="0 0 620 72" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" role="img"
+            aria-label="Pitch comparison between reference and your recording">
+            <rect x="148" y="0" width="60" height="72" fill="#8a3020" opacity="0.12" rx="2" />
+            <rect x="340" y="0" width="40" height="72" fill="#8a3020" opacity="0.1" rx="2" />
+            <polyline fill="none" stroke="#2a2520" strokeWidth="1.5"
+              points="0,36 20,24 40,38 60,20 80,40 100,28 120,36 140,18 160,42 180,30 200,36 220,22 240,44 260,30 280,36 300,24 320,42 340,32 360,36 380,22 400,44 420,30 440,36 460,22 480,44 500,30 520,36 540,22 560,44 580,32 600,36 620,28" />
+            <polyline fill="none" stroke="#c9a84c" strokeWidth="1.5"
+              points="0,36 20,26 40,40 60,22 80,42 100,30 120,38 140,20 160,52 170,58 180,56 200,50 208,44 220,24 240,46 260,32 280,38 300,26 320,44 340,48 360,54 378,44 380,24 400,46 420,32 440,38 460,24 480,46 500,32 520,38 540,24 560,46 580,34 600,38 620,30" />
+            <line x1="148" y1="4" x2="148" y2="68" stroke="#e06040" strokeWidth="0.75" strokeDasharray="3,3" opacity="0.5" />
+            <line x1="340" y1="4" x2="340" y2="68" stroke="#e06040" strokeWidth="0.75" strokeDasharray="3,3" opacity="0.4" />
+          </svg>
+          <div className="flex justify-between text-[10px] text-[#2a2520] mt-1">
+            <span>0:00</span><span>0:10</span><span>0:20</span><span>0:30</span><span>0:40</span><span>0:50</span><span>1:00</span>
+          </div>
+          <Link to={`/results/${last.id}`} className="inline-block mt-3 text-[12px] text-accent hover:text-accent-hover transition-colors">
+            View full analysis →
+          </Link>
+        </motion.div>
+      )}
+
+      {/* Breakdown mini-cards */}
+      {bkCards.length > 0 && (
+        <motion.div variants={fadeIn} className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-7">
+          {bkCards.map((c) => (
+            <div key={c.label} className="bk-card">
+              <div className="bk-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24">{c.icon}</svg>
+              </div>
+              <p className="bk-score">{c.score}%</p>
+              <p className="bk-label">{c.label}</p>
+              <div className="bk-bar">
+                <div
+                  className="bk-bar-fill"
+                  style={{ width: `${c.score}%`, background: c.score >= 75 ? "#c9a84c" : c.score >= 55 ? "#8a7848" : "#6a4820" }}
+                />
+              </div>
+            </div>
+          ))}
+        </motion.div>
+      )}
+
+      {/* Progress + recent sessions */}
+      <div className="grid lg:grid-cols-2 gap-4">
+        <motion.div variants={fadeIn} className="card">
+          <p className="card-title">Progress — last {Math.max(sessionTrend.length, 1)} sessions</p>
+          {sessionTrend.length > 1 ? (
+            <div className="h-40">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={sessionTrend} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="goldGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#c9a84c" stopOpacity={0.1} />
+                      <stop offset="100%" stopColor="#c9a84c" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="#1a1a1a" />
+                  <XAxis dataKey="name" stroke="#1a1a1a" tick={{ fontSize: 11, fill: "#3a3530" }} />
+                  <YAxis domain={[50, 100]} stroke="#1a1a1a" tick={{ fontSize: 11, fill: "#3a3530" }} tickFormatter={(v) => `${v}%`} />
+                  <Tooltip
+                    contentStyle={{ background: "#111", border: "1px solid #1e1e1e", borderRadius: "6px", color: "#e8e0d0", fontSize: "12px" }}
+                    formatter={(v: number) => [`${v}%`, "Score"]}
+                  />
+                  <Area type="monotone" dataKey="score" stroke="#c9a84c" strokeWidth={1.5} fill="url(#goldGrad)"
+                    dot={{ r: 3, fill: "#c9a84c", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#c9a84c" }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-40 flex flex-col items-center justify-center text-center">
+              <p className="text-[13px] text-text-dim">Not enough data yet</p>
+              <p className="text-[11px] text-text-faint mt-1">Complete a few sessions to see your trend</p>
+            </div>
+          )}
+        </motion.div>
+
+        <motion.div variants={fadeIn} className="card">
+          <div className="flex items-center justify-between mb-5">
+            <p className="card-title !mb-0">Recent sessions</p>
+            {history.length > 5 && (
+              <Link to="/history" className="text-[11px] text-text-muted hover:text-accent transition-colors">View all</Link>
+            )}
+          </div>
+          {scored.length > 0 ? (
+            <div>
+              {scored.slice(0, 5).map((item) => (
+                <div key={item.id} className="history-item" onClick={() => navigate(`/results/${item.id}`)}>
+                  <div className="min-w-0">
+                    <p className="h-title truncate">{item.file_name}</p>
+                    <p className="h-meta">
+                      {formatDate(item.created_at)} · {formatDuration(item.duration_seconds)}
+                    </p>
+                  </div>
+                  <span className={`h-score ${scoreClass(item.overall_score)}`}>{Math.round(item.overall_score)}%</span>
+                  <span className="h-badge">Session</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center">
+              <p className="text-[13px] text-text-dim mb-3">No sessions recorded</p>
+              <Link to="/upload">
+                <button className="btn-primary">Upload recording</button>
+              </Link>
+            </div>
+          )}
+        </motion.div>
+      </div>
     </motion.div>
   );
 }

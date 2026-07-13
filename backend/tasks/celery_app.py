@@ -8,6 +8,7 @@ celery_app = Celery(
     "audiocoach",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
+    include=["tasks.analyze_task"],
 )
 
 celery_app.conf.update(
@@ -23,4 +24,3 @@ celery_app.conf.update(
     task_time_limit=360,       # 6 minutes hard limit
 )
 
-celery_app.autodiscover_tasks(["tasks"])

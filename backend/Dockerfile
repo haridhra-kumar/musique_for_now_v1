@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
@@ -8,8 +8,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
+ENV PYTHONPATH=/app
+ENV PIP_TRUSTED_HOST="pypi.org files.pythonhosted.org pypi.python.org"
+
+RUN --mount=type=cache,target=/root/.cache/pip pip install setuptools wheel
+
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+
+RUN --mount=type=cache,target=/root/.cache/pip pip install --no-build-isolation crepe==0.0.16
+
+RUN --mount=type=cache,target=/root/.cache/pip pip install "tensorflow>=2.16.0,<3.0"
+
+RUN --mount=type=cache,target=/root/.cache/pip pip install -r requirements.txt
 
 COPY . .
 

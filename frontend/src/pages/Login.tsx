@@ -31,90 +31,73 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-mesh relative overflow-hidden">
-      {/* Animated background orbs */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          className="absolute w-96 h-96 rounded-full opacity-20"
-          style={{
-            background: "radial-gradient(circle, #6366f1 0%, transparent 70%)",
-            top: "10%",
-            left: "10%",
-          }}
-          animate={{ x: [0, 50, 0], y: [0, 30, 0] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute w-72 h-72 rounded-full opacity-15"
-          style={{
-            background: "radial-gradient(circle, #a855f7 0%, transparent 70%)",
-            bottom: "10%",
-            right: "10%",
-          }}
-          animate={{ x: [0, -40, 0], y: [0, -20, 0] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute w-56 h-56 rounded-full opacity-10"
-          style={{
-            background: "radial-gradient(circle, #ec4899 0%, transparent 70%)",
-            top: "50%",
-            right: "30%",
-          }}
-          animate={{ x: [0, 30, 0], y: [0, -40, 0] }}
-          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-        />
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 30, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        className="w-full max-w-md relative z-10"
-      >
-        {/* Logo */}
-        <motion.div
-          className="text-center mb-8"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+    <div className="min-h-screen flex flex-col bg-bg-primary">
+      {/* Topbar */}
+      <header className="h-14 border-b border-border px-6 md:px-8 flex items-center justify-between shrink-0">
+        <span className="logo-serif text-lg">
+          musique<span>.</span>
+        </span>
+        <Link
+          to="/register"
+          className="text-[13px] text-text-dim hover:text-accent transition-colors"
         >
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 text-3xl"
-            style={{
-              background: "linear-gradient(135deg, #6366f1, #a855f7)",
-              boxShadow: "0 8px 30px rgba(99, 102, 241, 0.4)",
-            }}
-          >
-            &#9835;
-          </div>
-          <h1 className="text-3xl font-bold gradient-text">AudioCoach AI</h1>
-          <p className="text-text-secondary mt-2">Analyze your performance with AI</p>
-        </motion.div>
+          Create account
+        </Link>
+      </header>
 
-        {/* Login card */}
-        <div className="glass-strong rounded-2xl p-8 glow-border">
-          <h2 className="text-xl font-semibold mb-6">Welcome back</h2>
+      <div className="flex-1 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="w-full max-w-[380px]"
+        >
+          {/* Decorative pitch line */}
+          <svg
+            width="100%"
+            height="40"
+            viewBox="0 0 380 40"
+            xmlns="http://www.w3.org/2000/svg"
+            className="mb-6"
+            aria-hidden="true"
+          >
+            <polyline
+              fill="none"
+              stroke="#2a2520"
+              strokeWidth="1.5"
+              points="0,20 25,12 50,22 75,10 100,24 125,15 150,20 175,8 200,26 225,16 250,20 275,11 300,25 325,16 350,22 380,14"
+            />
+            <polyline
+              fill="none"
+              stroke="#c9a84c"
+              strokeWidth="1.5"
+              points="0,22 25,14 50,24 75,12 100,26 125,17 150,23 175,10 200,28 225,18 250,22 275,13 300,27 325,18 350,24 380,16"
+            />
+          </svg>
+
+          <div className="mb-7">
+            <h1 className="page-title !text-[22px]">Welcome back</h1>
+            <p className="page-sub">Sign in to keep training your voice.</p>
+          </div>
 
           {error && (
             <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              className="mb-4 p-3 rounded-xl text-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="mb-4 px-3 py-2.5 rounded-md text-[13px]"
               style={{
-                background: "rgba(239, 68, 68, 0.1)",
-                border: "1px solid rgba(239, 68, 68, 0.2)",
-                color: "#fca5a5",
+                background: "rgba(224,96,64,0.06)",
+                border: "1px solid rgba(224,96,64,0.25)",
+                color: "#e06040",
               }}
             >
               {error}
             </motion.div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="card !p-6 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                Email
-              </label>
+              <label className="input-label">Email</label>
               <input
                 type="email"
                 value={email}
@@ -124,46 +107,32 @@ export default function Login() {
                 className="input-field"
               />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="input-label !mb-0">Password</label>
+              </div>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
+                placeholder="Your password"
                 required
                 className="input-field"
               />
             </div>
-
-            <motion.button
-              type="submit"
-              disabled={loading}
-              className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50"
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
-            >
-              {loading ? (
-                <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.3" />
-                  <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-                </svg>
-              ) : null}
-              {loading ? "Signing in..." : "Sign in"}
-            </motion.button>
+            <button type="submit" disabled={loading} className="btn-primary w-full !py-2.5">
+              {loading ? "Signing in…" : "Sign in"}
+            </button>
           </form>
 
-          <p className="text-center text-sm text-text-muted mt-6">
-            Don't have an account?{" "}
-            <Link to="/register" className="text-accent-blue hover:text-accent-purple transition-colors font-medium">
-              Create one
+          <p className="text-center text-[13px] text-text-dim mt-6">
+            New to musique?{" "}
+            <Link to="/register" className="text-accent hover:text-accent-hover transition-colors">
+              Create an account
             </Link>
           </p>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </div>
   );
 }

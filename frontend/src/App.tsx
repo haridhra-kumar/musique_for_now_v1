@@ -8,7 +8,8 @@ import Dashboard from "./pages/Dashboard";
 import Upload from "./pages/Upload";
 import Results from "./pages/Results";
 import History from "./pages/History";
-import Profile from "./pages/Profile";
+import Progress from "./pages/Progress";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,11 +26,9 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          {/* Public routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Protected routes with layout */}
           <Route
             element={
               <ProtectedRoute>
@@ -41,10 +40,11 @@ export default function App() {
             <Route path="/upload" element={<Upload />} />
             <Route path="/results/:jobId" element={<Results />} />
             <Route path="/history" element={<History />} />
-            <Route path="/profile" element={<Profile />} />
+            <Route path="/progress" element={<Progress />} />
+            <Route path="/settings" element={<Settings />} />
           </Route>
 
-          {/* Fallback */}
+          <Route path="/profile" element={<Navigate to="/settings" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
