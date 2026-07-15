@@ -3,8 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { useDropzone } from "react-dropzone";
 import { motion, AnimatePresence } from "framer-motion";
 import { analyzeApi } from "../lib/api";
+import AudioRecorder from "../components/AudioRecorder";
 
 type UploadState = "idle" | "uploading" | "processing" | "done" | "error";
+type Mode = "upload" | "record";
 
 const ACCEPTED_FORMATS: Record<string, string[]> = {
   "audio/*": [".mp3", ".wav", ".flac", ".ogg", ".aac", ".m4a", ".wma"],
@@ -13,6 +15,7 @@ const ACCEPTED_FORMATS: Record<string, string[]> = {
 
 export default function Upload() {
   const navigate = useNavigate();
+  const [mode, setMode] = useState<Mode>("upload");
   const [state, setState] = useState<UploadState>("idle");
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
@@ -63,6 +66,12 @@ export default function Upload() {
 
   const resetUpload = () => { setState("idle"); setFile(null); setProgress(0); setError(""); };
 
+  const switchMode = (m: Mode) => {
+    if (m === mode) return;
+    setMode(m);
+    resetUpload();
+  };
+
   const formatSize = (b: number) => b < 1024 * 1024 ? `${(b / 1024).toFixed(1)} KB` : `${(b / (1024 * 1024)).toFixed(1)} MB`;
 
   const steps = [
@@ -78,12 +87,29 @@ export default function Upload() {
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="max-w-xl mx-auto">
       <div className="mb-7">
         <h1 className="page-title">New session</h1>
-        <p className="page-sub">Upload a recording for a full performance analysis.</p>
+        <p className="page-sub">Upload, or record live, for a full performance analysis.</p>
       </div>
 
+      {state === "idle" && (
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => switchMode("upload")}
+            className={mode === "upload" ? "btn-primary !py-1.5 !px-4 text-[12px]" : "btn-secondary !py-1.5 !px-4 text-[12px]"}
+          >
+            Upload file
+          </button>
+          <button
+            onClick={() => switchMode("record")}
+            className={mode === "record" ? "btn-primary !py-1.5 !px-4 text-[12px]" : "btn-secondary !py-1.5 !px-4 text-[12px]"}
+          >
+            Record audio
+          </button>
+        </div>
+      )}
+
       <AnimatePresence mode="wait">
-        {state === "idle" && (
-          <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+        {state === "idle" && mode === "upload" && (
+          <motion.div key="idle-upload" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
             <div {...getRootProps()} className={`upload-zone !p-12 ${isDragActive ? "dragging" : ""}`}>
               <input {...getInputProps()} />
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"
@@ -116,6 +142,25 @@ export default function Upload() {
                 </button>
               </motion.div>
             )}
+
+            {error && (
+              <p className="text-[12px]" style={{ color: "#e06040" }}>{error}</p>
+            )}
+
+            <button onClick={handleUpload} disabled={!file} className="btn-primary w-full !py-2.5">
+              Start analysis
+            </button>
+          </motion.div>
+        )}
+
+        {state === "idle" && mode === "record" && (
+          <motion.div key="idle-record" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+            <AudioRecorder
+              onRecordingComplete={(recordedFile) => {
+                setFile(recordedFile);
+                setError("");
+              }}
+            />
 
             {error && (
               <p className="text-[12px]" style={{ color: "#e06040" }}>{error}</p>
