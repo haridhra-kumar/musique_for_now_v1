@@ -14,6 +14,7 @@ from ..models.user import User
 from ..schemas.analysis import (
     AnalysisResultResponse,
     AnalysisStatusResponse,
+    ExerciseOut,
     MistakeOut,
     UploadResponse,
 )
@@ -110,6 +111,9 @@ async def get_result(
     mistakes = [
         MistakeOut(**m) for m in rj.get("mistakes", [])
     ]
+    exercises = [
+        ExerciseOut(**e) for e in rj.get("exercises", [])
+    ]
 
     return AnalysisResultResponse(
         id=analysis.id,
@@ -127,6 +131,7 @@ async def get_result(
         duration_seconds=analysis.duration_seconds,
         processing_time_seconds=analysis.processing_time_seconds,
         mistakes=mistakes,
+        exercises=exercises,
         feedback_beginner=analysis.feedback.beginner_text if analysis.feedback else "",
         feedback_musician=analysis.feedback.musician_text if analysis.feedback else "",
         pitch_data=rj.get("pitch_data", []),

@@ -12,6 +12,7 @@ import librosa
 import numpy as np
 
 from . import config as cfg
+from .key import get_scale_pitch_classes
 
 
 @dataclass
@@ -22,6 +23,8 @@ class PitchFrame:
     cents_deviation: float  # deviation from nearest note in cents
     nearest_note: str
     is_voiced: bool
+    in_key: bool  # True if the nearest note belongs to the detected song key
+                  # (also True when key is unknown — can't judge in that case)
 
 
 NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
@@ -50,7 +53,15 @@ def _cents_from_nearest(freq: float) -> tuple[float, str]:
     return round(cents, 1), note_name
 
 
-def detect_pitch(y: np.ndarray, sr: int) -> list[PitchFrame]:
+def detect_pitch(y: np.ndarray, sr: int, key: str | None = None) -> list[PitchFrame]:
+    """Detect pitch per frame. If `key` is provided (e.g. "C major" from
+    key.detect_key), each frame is also checked against that key's scale
+    so pitch scoring can tell a well-tuned WRONG note from a correct one —
+    without this, any steady note scores as "in tune" regardless of whether
+    it belongs in the song at all.
+    """
+    scale_classes = get_scale_pitch_classes(key) if key else set()
+
     time_crepe, freq_crepe, conf_crepe, _ = crepe.predict(
         y, sr,
         model_capacity=cfg.CREPE_MODEL_CAPACITY,
@@ -88,6 +99,12 @@ def detect_pitch(y: np.ndarray, sr: int) -> list[PitchFrame]:
 
         cents_dev, note = _cents_from_nearest(f)
 
+        if f > 0 and scale_classes:
+            nearest_pitch_class = int(round(_hz_to_midi(f))) % 12
+            in_key = nearest_pitch_class in scale_classes
+        else:
+            in_key = True  # unknown key or unvoiced frame — don't penalize
+
         frames.append(PitchFrame(
             time=round(t, 4),
             freq=round(f, 2),
@@ -95,6 +112,7 @@ def detect_pitch(y: np.ndarray, sr: int) -> list[PitchFrame]:
             cents_deviation=cents_dev,
             nearest_note=note,
             is_voiced=is_voiced,
+            in_key=in_key,
         ))
 
     return frames

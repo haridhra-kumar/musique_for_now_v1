@@ -23,6 +23,9 @@ PYIN_FMIN = 65.0                  # Hz — lowest expected vocal pitch (C2)
 PYIN_FMAX = 1000.0                # Hz — highest expected vocal pitch (B5)
 PYIN_AGREEMENT_CENTS = 30.0       # if CREPE & pYIN within this, boost confidence
 OCTAVE_JUMP_CENTS = 1100.0        # detect tracker octave errors (< 1200 for tolerance)
+OUT_OF_KEY_PENALTY = 0.4          # multiplier applied to a frame's pitch score when the
+                                   # note is well-tuned but NOT in the song's detected key.
+                                   # Keeps a wrong-but-precise note from scoring as "in tune".
 
 # ── Key detection ─────────────────────────────────────────────
 MIN_DURATION_FOR_KEY = 3.0  # seconds — below this, key detection unreliable
@@ -39,14 +42,21 @@ WEIGHT_TEMPO = 0.15
 WEIGHT_VOCAL_STABILITY = 0.10
 
 # ── Mistake detection ─────────────────────────────────────────
-# NOTE: thresholds are deliberately forgiving. Human singing (esp. with
-# vibrato) routinely swings ±40-60 cents, so flagging below a half-semitone
-# produces a wall of false positives. We also require a sustained off-pitch
-# stretch and merge over a wide window so each flag is a real, distinct event.
 MISTAKE_MERGE_WINDOW = 2.5        # seconds — merge mistakes closer than this
-PITCH_DEVIATION_MEDIUM = 55       # cents — ~½ semitone, clearly noticeable
-PITCH_DEVIATION_HIGH = 110        # cents — >1 semitone, a wrong note
+# NOTE: cents_deviation is "distance to the NEAREST semitone", which by
+# definition can never exceed 50 cents (any frequency's nearest semitone is
+# at most half a semitone away). Thresholds above 50 are unreachable and
+# silently disable mistake detection entirely — keep these under 50.
+PITCH_DEVIATION_MEDIUM = 18       # cents — noticeably off, worth flagging
+PITCH_DEVIATION_HIGH = 35         # cents — clearly wrong, close to the next note over
 PITCH_SUSTAINED_MIN_SEC = 0.35    # off-pitch must persist this long to count
+# Real pitch trackers are noisy frame-to-frame: even a genuinely bad stretch
+# will have the occasional 10-20ms frame land close to a chromatic note by
+# chance. Without tolerance, that single frame ends the "off-pitch run" and
+# resets progress, so real mistakes get shredded into fragments too short to
+# ever cross PITCH_SUSTAINED_MIN_SEC. This tolerance bridges brief blips
+# without merging genuinely separate mistakes into one giant blob.
+PITCH_GAP_TOLERANCE_SEC = 0.15
 RHYTHM_DEVIATION_MEDIUM = 0.08    # seconds early/late for "medium"
 RHYTHM_DEVIATION_HIGH = 0.15      # seconds early/late for "high"
 

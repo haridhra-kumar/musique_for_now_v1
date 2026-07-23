@@ -13,12 +13,13 @@ from . import config as cfg
 
 @dataclass
 class Mistake:
-    timestamp: str       # "M:SS" in original file time
-    time_seconds: float  # raw seconds in original file
-    type: str            # "pitch" | "rhythm" | "tempo" | "unclear"
-    severity: str        # "low" | "medium" | "high"
-    description: str     # human-readable
-    confidence: float    # how sure are we this is real
+    timestamp: str            # "M:SS" in original file time
+    time_seconds: float       # raw seconds in original file
+    end_time_seconds: float   # when the mistake ends (== time_seconds if instant, e.g. tempo)
+    type: str                 # "pitch" | "rhythm" | "tempo" | "unclear"
+    severity: str             # "low" | "medium" | "high"
+    description: str          # human-readable
+    confidence: float         # how sure are we this is real
 
 
 def map_mistakes(
@@ -44,6 +45,7 @@ def map_mistakes(
         {
             "timestamp": m.timestamp,
             "time_seconds": round(m.time_seconds, 2),
+            "end_time_seconds": round(m.end_time_seconds, 2),
             "type": m.type,
             "severity": m.severity,
             "description": m.description,
@@ -66,21 +68,33 @@ def _extract_pitch_mistakes(
     """
     last_flagged_time = -999.0
 
-    # State for the current off-pitch run
+    # State for the current off-pitch run. `run_last_bad_time` tracks the
+    # most recent frame that actually qualified as off-pitch/out-of-key —
+    # duration and the flush decision are based on that, not on however far
+    # a tolerated gap of "good" frames has stretched things.
     run_start: float | None = None
+    run_last_bad_time: float | None = None
     run_worst_cents = 0.0
     run_worst_note = ""
     run_conf = 0.0
+    run_out_of_key = False  # any frame in this run landed on a note outside the song's key
 
-    def flush(run_end: float) -> None:
-        nonlocal last_flagged_time, run_start, run_worst_cents, run_worst_note, run_conf
-        if run_start is None:
+    def flush() -> None:
+        nonlocal last_flagged_time, run_start, run_last_bad_time, run_worst_cents, run_worst_note, run_conf, run_out_of_key
+        if run_start is None or run_last_bad_time is None:
+            run_start = None
+            run_last_bad_time = None
             return
-        duration = run_end - run_start
+        duration = run_last_bad_time - run_start
         long_enough = duration >= cfg.PITCH_SUSTAINED_MIN_SEC
         spaced_out = (run_start - last_flagged_time) > cfg.MISTAKE_MERGE_WINDOW
         if long_enough and spaced_out:
-            if run_worst_cents >= cfg.PITCH_DEVIATION_HIGH:
+            # Out-of-key notes are real melodic mistakes even when they're
+            # precisely tuned to themselves (cents_deviation can't see this —
+            # it only measures distance to the nearest semitone, not whether
+            # that semitone belongs in the song). Treat "not in key" as its
+            # own escalation path to high severity, alongside raw cents.
+            if run_worst_cents >= cfg.PITCH_DEVIATION_HIGH or (run_out_of_key and run_worst_cents >= cfg.PITCH_DEVIATION_MEDIUM):
                 severity = "high"
                 desc = (
                     f"Pitch noticeably off from {run_worst_note} here"
@@ -92,9 +106,11 @@ def _extract_pitch_mistakes(
                 desc = "Pitch drifts slightly here — ease back onto the note"
                 mistake_conf = min(run_conf * 0.85, 0.8)
             orig_time = run_start + trim_offset
+            orig_end_time = run_last_bad_time + trim_offset
             out.append(Mistake(
                 timestamp=_format_time(orig_time),
                 time_seconds=orig_time,
+                end_time_seconds=orig_end_time,
                 type="pitch",
                 severity=severity,
                 description=desc,
@@ -103,34 +119,42 @@ def _extract_pitch_mistakes(
             last_flagged_time = run_start
         # reset run
         run_start = None
+        run_last_bad_time = None
         run_worst_cents = 0.0
         run_worst_note = ""
         run_conf = 0.0
-
-    step = cfg.CREPE_STEP_SIZE / 1000.0  # ms → seconds
+        run_out_of_key = False
 
     for f in frames:
         t = f.get("time", 0)
         conf = f.get("confidence", 0)
         cents = abs(f.get("cents_deviation", 0))
         is_voiced = f.get("is_voiced", False)
+        in_key = f.get("in_key", True)
 
-        # Unreliable or in-tune frame ends any active off-pitch run
-        if not is_voiced or conf < cfg.CREPE_CONFIDENCE_THRESHOLD or cents < cfg.PITCH_DEVIATION_MEDIUM:
-            flush(t)
-            continue
+        is_bad = is_voiced and conf >= cfg.CREPE_CONFIDENCE_THRESHOLD and (cents >= cfg.PITCH_DEVIATION_MEDIUM or not in_key)
 
-        # Frame is voiced, confident, and off-pitch → extend the run
-        if run_start is None:
-            run_start = t
-        if cents > run_worst_cents:
-            run_worst_cents = cents
-            run_worst_note = f.get("nearest_note", "") or run_worst_note
-        run_conf = max(run_conf, conf)
+        if is_bad:
+            if run_start is None:
+                run_start = t
+            run_last_bad_time = t
+            if cents > run_worst_cents:
+                run_worst_cents = cents
+                run_worst_note = f.get("nearest_note", "") or run_worst_note
+            if not in_key:
+                run_out_of_key = True
+        elif run_start is not None:
+            # A "good" or unreliable frame — only end the run if it's been
+            # too long since the last genuinely bad frame (real pitch
+            # tracking is noisy, so a single stray in-tune frame shouldn't
+            # shatter an otherwise-sustained mistake into fragments).
+            gap = t - run_last_bad_time
+            if gap > cfg.PITCH_GAP_TOLERANCE_SEC:
+                flush()
 
     # Flush a run still open at the end of the file
     if frames:
-        flush(frames[-1].get("time", 0) + step)
+        flush()
 
 
 def _extract_rhythm_mistakes(
@@ -162,6 +186,7 @@ def _extract_rhythm_mistakes(
         out.append(Mistake(
             timestamp=_format_time(orig_time),
             time_seconds=orig_time,
+            end_time_seconds=orig_time,
             type="tempo",
             severity=severity,
             description=desc,

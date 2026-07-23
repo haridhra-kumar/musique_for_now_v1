@@ -18,6 +18,29 @@ _MAJOR_PROFILE = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09,
 _MINOR_PROFILE = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53,
                            2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
 
+# Semitone steps (from root) that belong to each scale — used to check
+# whether a sung note is actually *in the song's key*, not just close
+# to some equal-tempered semitone in the abstract.
+_MAJOR_STEPS = [0, 2, 4, 5, 7, 9, 11]
+_MINOR_STEPS = [0, 2, 3, 5, 7, 8, 10]  # natural minor
+
+
+def get_scale_pitch_classes(key: str) -> set[int]:
+    """Return the 7 pitch classes (0-11) that belong to the given key.
+
+    `key` is the string returned by detect_key(), e.g. "C major" or
+    "A minor". Returns an empty set if the key is unknown/unparseable —
+    callers should treat that as "can't judge in-key-ness" rather than
+    "everything is out of key".
+    """
+    parts = key.split()
+    if len(parts) != 2 or parts[0] not in KEYS:
+        return set()
+    root_name, mode = parts
+    root = KEYS.index(root_name)
+    steps = _MAJOR_STEPS if mode == "major" else _MINOR_STEPS
+    return {(root + s) % 12 for s in steps}
+
 
 def detect_key(y: np.ndarray, sr: int) -> str:
     duration = len(y) / sr

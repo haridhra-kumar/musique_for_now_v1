@@ -11,7 +11,7 @@ interface PitchDataPoint {
 
 interface PitchGraphProps {
   data: PitchDataPoint[];
-  mistakes?: { time_seconds: number; type: string; severity?: string }[];
+  mistakes?: { time_seconds: number; end_time_seconds?: number; type: string; severity?: string }[];
 }
 
 const noteFreqs: Record<string, number> = {
@@ -57,9 +57,6 @@ export default function PitchGraph({ data, mistakes = [] }: PitchGraphProps) {
     timeLabel: formatTime(d.time),
   }));
 
-  // Total time span, used to size the shaded drift band around each mistake
-  const tSpan = sampled.length > 1 ? sampled[sampled.length - 1].time - sampled[0].time : 1;
-  const bandHalf = Math.max(0.35, tSpan * 0.012); // seconds either side of the mistake
   const pitchMistakes = mistakes.filter((m) => m.type === "pitch");
 
   return (
@@ -103,12 +100,12 @@ export default function PitchGraph({ data, mistakes = [] }: PitchGraphProps) {
             {pitchMistakes.map((m, i) => (
               <ReferenceArea
                 key={`drift-${i}`}
-                x1={m.time_seconds - bandHalf}
-                x2={m.time_seconds + bandHalf}
-                fill="#8a3020"
-                fillOpacity={m.severity === "high" ? 0.28 : 0.16}
+                x1={m.time_seconds}
+                x2={m.end_time_seconds ?? m.time_seconds + 0.3}
+                fill="#e06040"
+                fillOpacity={m.severity === "high" ? 0.4 : 0.22}
                 stroke="#e06040"
-                strokeOpacity={0.25}
+                strokeOpacity={0.6}
               />
             ))}
             <Line type="monotone" dataKey="freq" stroke="#c9a84c" strokeWidth={1.5}

@@ -33,22 +33,24 @@ def analyze(audio_path: str) -> dict:
     quality = check_quality(y, sr)
     logger.info("Quality: SNR=%.1f dB, warning=%s", quality.snr, quality.quality_warning)
 
-    # Step 5: Pitch detection (CREPE + pYIN)
-    pitch_frames = detect_pitch(y, sr)
+    # Step 5: Key detection (moved ahead of pitch detection — pitch scoring
+    # needs to know the song's key to tell an in-tune-but-wrong note from
+    # an actually-correct one)
+    key = detect_key(y, sr)
+    logger.info("Key: %s", key)
+
+    # Step 6: Pitch detection (CREPE + pYIN), key-aware
+    pitch_frames = detect_pitch(y, sr, key=key)
     frames_as_dicts = [
         {
             "time": f.time, "freq": f.freq, "confidence": f.confidence,
             "cents_deviation": f.cents_deviation, "nearest_note": f.nearest_note,
-            "is_voiced": f.is_voiced,
+            "is_voiced": f.is_voiced, "in_key": f.in_key,
         }
         for f in pitch_frames
     ]
     voiced_count = sum(1 for f in pitch_frames if f.is_voiced)
     logger.info("Pitch: %d frames, %d voiced", len(pitch_frames), voiced_count)
-
-    # Step 6: Key detection
-    key = detect_key(y, sr)
-    logger.info("Key: %s", key)
 
     # Step 7: Octave shift
     octave = detect_octave_shift(frames_as_dicts, key)
@@ -94,6 +96,7 @@ def analyze(audio_path: str) -> dict:
         "key_detected": key,
     }
     fb = generate_feedback(scores_dict, mistakes)
+    exercises = fb["exercises"]
 
     elapsed = time.time() - t0
     logger.info("Analysis complete in %.2fs", elapsed)
@@ -111,6 +114,7 @@ def analyze(audio_path: str) -> dict:
         "snr_db": quality.snr,
         "duration_seconds": round(load_result.original_duration, 2),
         "mistakes": mistakes,
+        "exercises": exercises,
         "feedback_beginner": fb["feedback_beginner"],
         "feedback_musician": fb["feedback_musician"],
         "processing_time_seconds": round(elapsed, 2),

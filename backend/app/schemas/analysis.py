@@ -34,10 +34,17 @@ class UploadResponse(BaseModel):
 class MistakeOut(BaseModel):
     timestamp: str
     time_seconds: float
+    end_time_seconds: float
     type: str
     severity: str
     description: str
     confidence: float
+
+
+class ExerciseOut(BaseModel):
+    name: str
+    why: str
+    how: str
 
 
 class AnalysisResultResponse(BaseModel):
@@ -56,6 +63,7 @@ class AnalysisResultResponse(BaseModel):
     duration_seconds: float | None
     processing_time_seconds: float | None
     mistakes: list[MistakeOut]
+    exercises: list[ExerciseOut]
     feedback_beginner: str
     feedback_musician: str
     pitch_data: list[dict]

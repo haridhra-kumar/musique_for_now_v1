@@ -187,6 +187,22 @@ export default function Results() {
         </motion.div>
       </div>
 
+      {/* Suggested exercises */}
+      {result.exercises && result.exercises.length > 0 && (
+        <motion.div variants={fadeIn} className="card mb-6">
+          <p className="card-title">Exercises to try</p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {result.exercises.map((ex) => (
+              <div key={ex.name} className="rounded-md p-3.5 border border-border-soft">
+                <p className="text-[13px] text-text-primary mb-1">{ex.name}</p>
+                <p className="text-[12px] text-text-dim mb-2">{ex.why}</p>
+                <p className="text-[11px] text-text-muted">{ex.how}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
       {/* Actions */}
       <motion.div variants={fadeIn} className="flex flex-col sm:flex-row items-center justify-center gap-3">
         <Link to="/upload"><button className="btn-primary">New session</button></Link>

@@ -9,7 +9,18 @@ from . import config as cfg
 
 
 def score_pitch(pitch_frames: list[dict]) -> int:
-    """0–100 based on percentage of voiced frames with good confidence and low deviation."""
+    """0–100 based on percentage of voiced frames with good confidence and low deviation.
+
+    Two separate things are combined here:
+      - cents_deviation: how precisely in-tune the note is (tuning accuracy)
+      - in_key: whether that note actually belongs to the song's detected key
+
+    Without the in_key check, a singer who hits a confident, well-tuned WRONG
+    note (e.g. a semitone off the melody but dead-center on some other pitch)
+    scores as "in tune" — which is how this used to give high pitch scores
+    regardless of tonality. A note that's out of key gets its frame score
+    scaled down even if it's precisely tuned to itself.
+    """
     voiced = [f for f in pitch_frames if f.get("is_voiced", False)]
     if not voiced:
         return 0
@@ -20,17 +31,25 @@ def score_pitch(pitch_frames: list[dict]) -> int:
     for f in voiced:
         conf = f.get("confidence", 0.5)
         cents = abs(f.get("cents_deviation", 0))
+        in_key = f.get("in_key", True)
 
-        if cents <= 15:
+        # cents_deviation is bounded to 0-50 (distance to the nearest
+        # semitone can never exceed half a semitone) — bands are scaled to
+        # that real range so every tier, including the worst one, is
+        # actually reachable.
+        if cents <= 8:
             frame_score = 1.0
-        elif cents <= 30:
+        elif cents <= 15:
             frame_score = 0.85
-        elif cents <= 50:
+        elif cents <= 25:
             frame_score = 0.6
-        elif cents <= 80:
+        elif cents <= 40:
             frame_score = 0.3
         else:
             frame_score = 0.05
+
+        if not in_key:
+            frame_score *= cfg.OUT_OF_KEY_PENALTY
 
         weighted_score += frame_score * conf
         total_weight += conf

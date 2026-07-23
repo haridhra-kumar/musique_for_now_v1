@@ -13,10 +13,16 @@ export interface AnalysisResult {
   mistakes: {
     timestamp: string;
     time_seconds: number;
+    end_time_seconds: number;
     type: "pitch" | "rhythm" | "tempo" | "unclear";
     severity: "low" | "medium" | "high";
     description: string;
     confidence: number;
+  }[];
+  exercises: {
+    name: string;
+    why: string;
+    how: string;
   }[];
   feedback_beginner: string;
   feedback_musician: string;
