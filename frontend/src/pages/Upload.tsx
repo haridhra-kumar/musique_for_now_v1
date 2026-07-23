@@ -4,8 +4,9 @@ import { useDropzone } from "react-dropzone";
 import { motion, AnimatePresence } from "framer-motion";
 import { analyzeApi } from "../lib/api";
 import AudioRecorder from "../components/AudioRecorder";
+import { isVideoFile, extractAudioFromVideo } from "../lib/videoToAudio";
 
-type UploadState = "idle" | "uploading" | "processing" | "done" | "error";
+type UploadState = "idle" | "converting" | "uploading" | "processing" | "done" | "error";
 type Mode = "upload" | "record";
 
 const ACCEPTED_FORMATS: Record<string, string[]> = {
@@ -29,10 +30,13 @@ export default function Upload() {
     onDrop,
     accept: ACCEPTED_FORMATS,
     maxFiles: 1,
-    maxSize: 100 * 1024 * 1024,
+    // Videos are converted to audio in-browser before upload, so they can be much
+    // larger than the eventual upload size. Audio files are sent as-is, so keep
+    // those in line with the backend's max_file_size_mb (see backend/app/config.py).
+    maxSize: 500 * 1024 * 1024,
     onDropRejected: (rejections) => {
       const code = rejections[0]?.errors[0]?.code;
-      setError(code === "file-too-large" ? "File is too large (max 100MB)." :
+      setError(code === "file-too-large" ? "File is too large (max 500MB)." :
                code === "file-invalid-type" ? "Unsupported format." : "Invalid file.");
     },
   });
@@ -53,9 +57,23 @@ export default function Upload() {
 
   const handleUpload = async () => {
     if (!file) return;
-    setState("uploading"); setProgress(0); setError("");
+    setProgress(0); setError("");
+
+    let uploadFile = file;
+    if (isVideoFile(file)) {
+      setState("converting");
+      try {
+        uploadFile = await extractAudioFromVideo(file);
+      } catch {
+        // Browser couldn't decode this codec — fall back to uploading the
+        // original video and let the backend's ffmpeg pipeline handle it.
+        uploadFile = file;
+      }
+    }
+
+    setState("uploading");
     try {
-      const res = await analyzeApi.upload(file);
+      const res = await analyzeApi.upload(uploadFile);
       setState("processing");
       pollStatus(res.data.job_id);
     } catch (err: unknown) {
@@ -121,7 +139,7 @@ export default function Upload() {
               <p className="text-[14px] text-text-soft mb-1">
                 {isDragActive ? "Drop it here" : "Drop your recording here"}
               </p>
-              <p className="text-[12px] text-text-faint">or click to browse — MP3, WAV, M4A, MP4 up to 100MB</p>
+              <p className="text-[12px] text-text-faint">or click to browse — MP3, WAV, M4A, MP4 up to 500MB (video audio is extracted on your device before upload)</p>
             </div>
 
             {file && (
@@ -169,6 +187,17 @@ export default function Upload() {
             <button onClick={handleUpload} disabled={!file} className="btn-primary w-full !py-2.5">
               Start analysis
             </button>
+          </motion.div>
+        )}
+
+        {state === "converting" && (
+          <motion.div key="converting" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="card !p-12 text-center">
+            <svg className="w-6 h-6 animate-spin mx-auto mb-4" viewBox="0 0 24 24" fill="none" style={{ color: "#c9a84c" }}>
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" opacity="0.2" />
+              <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+            </svg>
+            <p className="text-[14px] text-text-secondary">Extracting audio from video…</p>
+            <p className="text-[12px] text-text-faint mt-1">This happens on your device, so only the audio gets uploaded</p>
           </motion.div>
         )}
 
