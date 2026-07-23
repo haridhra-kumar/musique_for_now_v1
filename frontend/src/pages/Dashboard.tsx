@@ -4,8 +4,10 @@ import { motion } from "framer-motion";
 import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart,
 } from "recharts";
-import { userApi } from "../lib/api";
+import { userApi, analyzeApi } from "../lib/api";
 import { useAuthStore } from "../stores/auth";
+import PitchGraph from "../components/PitchGraph";
+import type { AnalysisResult } from "../types/analysis";
 
 interface HistoryItem {
   id: string;
@@ -97,6 +99,12 @@ export default function Dashboard() {
     ? scored.reduce((a, b) => (a.overall_score >= b.overall_score ? a : b))
     : null;
   const last = scored.length > 0 ? scored[0] : null;
+
+  const { data: lastResult, isLoading: isLastResultLoading } = useQuery<AnalysisResult>({
+    queryKey: ["result", last?.id],
+    queryFn: async () => (await analyzeApi.result(last!.id)).data,
+    enabled: !!last?.id,
+  });
 
   const sessionTrend = scored
     .slice(0, 8)
@@ -232,39 +240,26 @@ export default function Dashboard() {
 
       {/* Timestamped pitch map */}
       {last && (
-        <motion.div variants={fadeIn} className="card mb-7">
-          <p className="card-title !mb-3">Timestamped pitch map</p>
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-            <span className="text-[14px] text-accent font-medium truncate">{last.file_name}</span>
-            <div className="flex gap-4">
-              <span className="flex items-center gap-1.5 text-[11px] text-text-muted">
-                <span className="w-2 h-2 rounded-full bg-[#2a2520]" />Original
-              </span>
-              <span className="flex items-center gap-1.5 text-[11px] text-text-muted">
-                <span className="w-2 h-2 rounded-full bg-accent" />Your voice
-              </span>
-              <span className="flex items-center gap-1.5 text-[11px] text-text-muted">
-                <span className="w-4 h-1.5 rounded-sm bg-[#8a3020]" />Drift zone
-              </span>
+        <motion.div variants={fadeIn} className="mb-7">
+          {isLastResultLoading ? (
+            <div className="card flex items-center justify-center h-56">
+              <p className="text-[13px] text-text-dim">Loading pitch map…</p>
             </div>
-          </div>
-          <svg width="100%" height="72" viewBox="0 0 620 72" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" role="img"
-            aria-label="Pitch comparison between reference and your recording">
-            <rect x="148" y="0" width="60" height="72" fill="#8a3020" opacity="0.12" rx="2" />
-            <rect x="340" y="0" width="40" height="72" fill="#8a3020" opacity="0.1" rx="2" />
-            <polyline fill="none" stroke="#2a2520" strokeWidth="1.5"
-              points="0,36 20,24 40,38 60,20 80,40 100,28 120,36 140,18 160,42 180,30 200,36 220,22 240,44 260,30 280,36 300,24 320,42 340,32 360,36 380,22 400,44 420,30 440,36 460,22 480,44 500,30 520,36 540,22 560,44 580,32 600,36 620,28" />
-            <polyline fill="none" stroke="#c9a84c" strokeWidth="1.5"
-              points="0,36 20,26 40,40 60,22 80,42 100,30 120,38 140,20 160,52 170,58 180,56 200,50 208,44 220,24 240,46 260,32 280,38 300,26 320,44 340,48 360,54 378,44 380,24 400,46 420,32 440,38 460,24 480,46 500,32 520,38 540,24 560,46 580,34 600,38 620,30" />
-            <line x1="148" y1="4" x2="148" y2="68" stroke="#e06040" strokeWidth="0.75" strokeDasharray="3,3" opacity="0.5" />
-            <line x1="340" y1="4" x2="340" y2="68" stroke="#e06040" strokeWidth="0.75" strokeDasharray="3,3" opacity="0.4" />
-          </svg>
-          <div className="flex justify-between text-[10px] text-[#2a2520] mt-1">
-            <span>0:00</span><span>0:10</span><span>0:20</span><span>0:30</span><span>0:40</span><span>0:50</span><span>1:00</span>
-          </div>
-          <Link to={`/results/${last.id}`} className="inline-block mt-3 text-[12px] text-accent hover:text-accent-hover transition-colors">
-            View full analysis →
-          </Link>
+          ) : lastResult ? (
+            <>
+              <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                <span className="text-[13px] text-accent font-medium truncate">{last.file_name}</span>
+              </div>
+              <PitchGraph data={lastResult.pitch_data} mistakes={lastResult.mistakes} />
+              <Link to={`/results/${last.id}`} className="inline-block mt-3 text-[12px] text-accent hover:text-accent-hover transition-colors">
+                View full analysis →
+              </Link>
+            </>
+          ) : (
+            <div className="card flex items-center justify-center h-56">
+              <p className="text-[13px] text-text-dim">Pitch map unavailable for this session</p>
+            </div>
+          )}
         </motion.div>
       )}
 
