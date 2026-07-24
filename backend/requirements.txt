@@ -1,0 +1,38 @@
+# Core backend dependencies (API, DB, auth, tasks, scoring).
+# Heavy audio-analysis libraries live in requirements-audio.txt so that
+# CI lint/test jobs stay fast and don't need to build crepe/tensorflow.
+
+# Web framework
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic[email]==2.10.0
+pydantic-settings==2.7.0
+
+# Database
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+psycopg2-binary==2.9.10
+alembic==1.14.1
+
+# Auth
+PyJWT==2.10.1
+passlib[bcrypt]==1.7.4
+bcrypt==4.2.1
+
+# Task queue
+celery[redis]==5.4.0
+redis==5.2.1
+
+# File handling
+aiofiles==24.1.0
+boto3==1.35.0
+python-multipart==0.0.19
+
+# Numerics (used by scoring — kept in core so unit tests run without audio libs)
+numpy==1.26.4
+
+# Dev / Testing
+pytest==8.3.4
+pytest-asyncio==0.24.0
+httpx==0.28.1
+ruff==0.8.4

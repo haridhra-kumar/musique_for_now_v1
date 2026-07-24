@@ -1,0 +1,12 @@
+# Heavy audio-analysis dependencies for the Celery worker / analysis pipeline.
+# Installed on top of requirements.txt in the Docker image. Not needed for the
+# API server import, unit tests, or lint jobs.
+#
+# NOTE: crepe==0.0.16 is installed separately in the Dockerfile with
+# --no-build-isolation because its setup.py needs setuptools at build time.
+
+scipy==1.14.1
+librosa==0.10.2
+soundfile==0.12.1
+noisereduce==3.0.3
+tensorflow>=2.16.0,<3.0

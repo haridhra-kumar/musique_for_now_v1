@@ -1,8 +1,45 @@
+# Python
 __pycache__/
-*.pyc
-
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
 venv/
-.env
 
+# Environment
+.env
+*.env.local
+
+# IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads
+uploads/
+test_uploads/
+
+# Test
+test.db
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Node
+node_modules/
+frontend/dist/
+
+# Docker
+pgdata/
+
+# ML models (downloaded at runtime)
+*.h5
+*.pb
+*.onnx
