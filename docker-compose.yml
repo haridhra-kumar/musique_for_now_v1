@@ -41,6 +41,7 @@ services:
       redis:
         condition: service_healthy
     volumes:
+      - ./backend:/app
       - uploads:/app/uploads
 
   celery-worker:
@@ -58,6 +59,7 @@ services:
       redis:
         condition: service_healthy
     volumes:
+      - ./backend:/app
       - uploads:/app/uploads
 
   frontend:

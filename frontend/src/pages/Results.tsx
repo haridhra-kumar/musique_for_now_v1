@@ -11,7 +11,8 @@ import type { AnalysisResult } from "../types/analysis";
 const fadeIn = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
 const stagger = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } };
 
-function formatDuration(sec: number): string {
+function formatDuration(sec?: number | null): string {
+  if (sec == null || isNaN(sec) || sec < 0) return "--";
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;
@@ -84,9 +85,9 @@ export default function Results() {
         </Link>
         <h1 className="page-title">Session results</h1>
         <div className="flex flex-wrap items-center gap-3 mt-1.5 text-[12px] text-text-dim">
-          <span>Key <span className="text-text-secondary">{result.key_detected}</span></span>
+          <span>Key <span className="text-text-secondary">{result.key_detected || "Unknown"}</span></span>
           <span className="w-px h-3 bg-border" />
-          <span>Tempo <span className="text-text-secondary">{Math.round(result.tempo_bpm)} BPM</span></span>
+          <span>Tempo <span className="text-text-secondary">{result.tempo_bpm != null ? `${Math.round(result.tempo_bpm)} BPM` : "--"}</span></span>
           <span className="w-px h-3 bg-border" />
           <span>Duration <span className="text-text-secondary">{formatDuration(result.duration_seconds)}</span></span>
         </div>
@@ -102,7 +103,7 @@ export default function Results() {
           </svg>
           <div>
             <p className="text-[12px] text-accent">Low audio quality</p>
-            <p className="text-[11px] text-text-dim mt-0.5">SNR {result.snr_db.toFixed(1)} dB — record in a quieter space for better accuracy.</p>
+            <p className="text-[11px] text-text-dim mt-0.5">SNR {result.snr_db != null ? result.snr_db.toFixed(1) : "--"} dB — record in a quieter space for better accuracy.</p>
           </div>
         </motion.div>
       )}
@@ -175,9 +176,9 @@ export default function Results() {
               {feedbackMode === "beginner" ? result.feedback_beginner : result.feedback_musician}
             </motion.div>
           </AnimatePresence>
-          {result.octave_shift !== 0 && (
+          {Boolean(result.octave_shift) && (
             <p className="mt-4 text-[12px] text-text-dim">
-              <span className="text-accent">Note:</span> octave shift of {result.octave_shift > 0 ? "+" : ""}{result.octave_shift / 12} detected.
+              <span className="text-accent">Note:</span> octave shift of {result.octave_shift! > 0 ? "+" : ""}{result.octave_shift! / 12} detected.
             </p>
           )}
         </motion.div>

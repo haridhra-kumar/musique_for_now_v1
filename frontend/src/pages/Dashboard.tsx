@@ -51,7 +51,8 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function formatDuration(seconds: number): string {
+function formatDuration(seconds?: number | null): string {
+  if (seconds == null || isNaN(seconds) || seconds < 0) return "--";
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}m ${s.toString().padStart(2, "0")}s`;
@@ -96,7 +97,7 @@ export default function Dashboard() {
     ? Math.round(scored.reduce((sum, h) => sum + (h.pitch_score || 0), 0) / scored.length)
     : 0;
   const bestSession = scored.length > 0
-    ? scored.reduce((a, b) => (a.overall_score >= b.overall_score ? a : b))
+    ? scored.reduce((a, b) => ((a.overall_score || 0) >= (b.overall_score || 0) ? a : b))
     : null;
   const last = scored.length > 0 ? scored[0] : null;
 
@@ -104,41 +105,42 @@ export default function Dashboard() {
     queryKey: ["result", last?.id],
     queryFn: async () => (await analyzeApi.result(last!.id)).data,
     enabled: !!last?.id,
+    retry: false,
   });
 
   const sessionTrend = scored
     .slice(0, 8)
     .reverse()
-    .map((h, i) => ({ name: `S${i + 1}`, score: Math.round(h.overall_score) }));
+    .map((h, i) => ({ name: `S${i + 1}`, score: Math.round(h.overall_score || 0) }));
 
   const breakdown = last
     ? [
-        { name: "Pitch accuracy", score: Math.round(last.pitch_score) },
-        { name: "Rhythm & timing", score: Math.round(last.rhythm_score) },
-        { name: "Cover similarity", score: Math.round(Math.max(40, last.overall_score - 8)) },
-        { name: "Vocal control", score: Math.round(last.vocal_stability_score ?? Math.max(45, last.overall_score - 4)) },
-        { name: "Breath support", score: Math.round(Math.max(40, last.overall_score - 12)) },
-        { name: "Emotion & feel", score: Math.round(Math.min(96, last.overall_score + 5)) },
-        { name: "Instrument sync", score: Math.round(last.tempo_score) },
+        { name: "Pitch accuracy", score: Math.round(last.pitch_score || 0) },
+        { name: "Rhythm & timing", score: Math.round(last.rhythm_score || 0) },
+        { name: "Cover similarity", score: Math.round(Math.max(40, (last.overall_score || 50) - 8)) },
+        { name: "Vocal control", score: Math.round(last.vocal_stability_score ?? Math.max(45, (last.overall_score || 50) - 4)) },
+        { name: "Breath support", score: Math.round(Math.max(40, (last.overall_score || 50) - 12)) },
+        { name: "Emotion & feel", score: Math.round(Math.min(96, (last.overall_score || 50) + 5)) },
+        { name: "Instrument sync", score: Math.round(last.tempo_score || 0) },
       ]
     : [];
 
   const bkCards = last
     ? [
         {
-          label: "Pitch", score: Math.round(last.pitch_score),
+          label: "Pitch", score: Math.round(last.pitch_score || 0),
           icon: <path d="M2 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />,
         },
         {
-          label: "Rhythm", score: Math.round(last.rhythm_score),
+          label: "Rhythm", score: Math.round(last.rhythm_score || 0),
           icon: <><path d="M12 3v13" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" fill="none" /><circle cx="9.5" cy="17.5" r="2.5" stroke="currentColor" strokeWidth="1.7" fill="none" /><path d="M12 3l5 3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" fill="none" /></>,
         },
         {
-          label: "Breath", score: Math.round(Math.max(40, last.overall_score - 12)),
+          label: "Breath", score: Math.round(Math.max(40, (last.overall_score || 50) - 12)),
           icon: <path d="M12 4c-1 4-5 5-5 9a5 5 0 0 0 10 0c0-4-4-5-5-9z" stroke="currentColor" strokeWidth="1.7" fill="none" strokeLinejoin="round" />,
         },
         {
-          label: "Emotion", score: Math.round(Math.min(96, last.overall_score + 5)),
+          label: "Emotion", score: Math.round(Math.min(96, (last.overall_score || 50) + 5)),
           icon: <path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z" stroke="currentColor" strokeWidth="1.7" fill="none" strokeLinejoin="round" />,
         },
       ]

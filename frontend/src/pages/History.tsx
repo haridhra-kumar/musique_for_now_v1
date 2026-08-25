@@ -28,7 +28,8 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function formatDuration(seconds: number): string {
+function formatDuration(seconds?: number | null): string {
+  if (seconds == null || isNaN(seconds) || seconds < 0) return "--";
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}m ${s.toString().padStart(2, "0")}s`;
@@ -123,11 +124,11 @@ export default function History() {
                   <p className="h-meta">
                     {formatDate(item.created_at)} · {formatDuration(item.duration_seconds)}
                     <span className="hidden sm:inline">
-                      {" "}· P {Math.round(item.pitch_score)}% · R {Math.round(item.rhythm_score)}% · T {Math.round(item.tempo_score)}%
+                      {" "}· P {Math.round(item.pitch_score || 0)}% · R {Math.round(item.rhythm_score || 0)}% · T {Math.round(item.tempo_score || 0)}%
                     </span>
                   </p>
                 </div>
-                <span className={`h-score ${scoreClass(item.overall_score)}`}>{Math.round(item.overall_score)}%</span>
+                <span className={`h-score ${scoreClass(item.overall_score || 0)}`}>{Math.round(item.overall_score || 0)}%</span>
                 <span className="h-badge">Session</span>
               </div>
             ))}

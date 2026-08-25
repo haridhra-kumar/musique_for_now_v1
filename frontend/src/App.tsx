@@ -38,11 +38,11 @@ export default function App() {
             }
           >
             <Route path="/" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
-            <Route path="/upload" element={<Upload />} />
-            <Route path="/results/:jobId" element={<Results />} />
-            <Route path="/history" element={<History />} />
-            <Route path="/progress" element={<Progress />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route path="/upload" element={<ErrorBoundary><Upload /></ErrorBoundary>} />
+            <Route path="/results/:jobId" element={<ErrorBoundary><Results /></ErrorBoundary>} />
+            <Route path="/history" element={<ErrorBoundary><History /></ErrorBoundary>} />
+            <Route path="/progress" element={<ErrorBoundary><Progress /></ErrorBoundary>} />
+            <Route path="/settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />
           </Route>
 
           <Route path="/profile" element={<Navigate to="/settings" replace />} />
