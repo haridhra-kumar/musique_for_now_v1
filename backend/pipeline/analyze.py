@@ -125,8 +125,9 @@ def analyze(audio_path: str) -> dict:
 
 
 def _summarize_pitch(frames: list[dict]) -> list[dict]:
-    """Return a downsampled pitch curve for visualization (every 50ms)."""
-    step = 5  # at 10ms frames, every 5th = 50ms
+    """Return a downsampled pitch curve for visualization (every ~50-60ms)."""
+    from . import config as cfg
+    step = max(1, int(round(50.0 / cfg.CREPE_STEP_SIZE)))
     return [
         {
             "time": f["time"],
@@ -136,3 +137,4 @@ def _summarize_pitch(frames: list[dict]) -> list[dict]:
         }
         for i, f in enumerate(frames) if i % step == 0
     ]
+

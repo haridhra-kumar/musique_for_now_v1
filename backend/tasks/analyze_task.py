@@ -20,6 +20,8 @@ settings = get_settings()
 sync_url = settings.database_url.replace("+asyncpg", "").replace("postgresql://", "postgresql+psycopg2://")
 if "+asyncpg" not in settings.database_url and "postgresql://" in settings.database_url:
     sync_url = settings.database_url.replace("postgresql://", "postgresql+psycopg2://")
+if sync_url.startswith("sqlite+aiosqlite://"):
+    sync_url = sync_url.replace("sqlite+aiosqlite://", "sqlite://")
 
 sync_engine = create_engine(sync_url)
 SyncSession = sessionmaker(bind=sync_engine)
@@ -45,8 +47,8 @@ def to_native(obj):
     return obj
 
 
-@celery_app.task(name="tasks.analyze_task.run_analysis", bind=True, max_retries=2)
-def run_analysis(self, analysis_id: str, storage_key: str) -> dict:
+def process_analysis(analysis_id: str, storage_key: str) -> dict:
+    """Core analysis execution used by both Celery and FastAPI BackgroundTasks."""
     from app.services.storage import get_file_path
     from pipeline.analyze import analyze
 
@@ -107,6 +109,23 @@ def run_analysis(self, analysis_id: str, storage_key: str) -> dict:
             session.commit()
         except Exception:
             session.rollback()
-        raise self.retry(exc=e, countdown=30)
+        raise
     finally:
         session.close()
+
+
+@celery_app.task(name="tasks.analyze_task.run_analysis", bind=True, max_retries=2)
+def run_analysis(self, analysis_id: str, storage_key: str) -> dict:
+    try:
+        return process_analysis(analysis_id, storage_key)
+    except Exception as e:
+        raise self.retry(exc=e, countdown=30)
+
+
+def run_analysis_background(analysis_id: str, storage_key: str) -> dict:
+    """Direct execution for FastAPI BackgroundTasks when Celery is not available."""
+    try:
+        return process_analysis(analysis_id, storage_key)
+    except Exception:
+        return {"status": "failed"}
+

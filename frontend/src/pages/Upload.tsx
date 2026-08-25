@@ -20,6 +20,7 @@ export default function Upload() {
   const [state, setState] = useState<UploadState>("idle");
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
+  const [statusMessage, setStatusMessage] = useState("");
   const [error, setError] = useState("");
 
   const onDrop = useCallback((accepted: File[]) => {
@@ -42,18 +43,44 @@ export default function Upload() {
   });
 
   const pollStatus = async (jid: string) => {
+    let consecutiveFails = 0;
     for (let i = 0; i < 300; i++) {
       try {
         const res = await analyzeApi.status(jid);
-        const { status, progress: pct } = res.data;
-        setProgress(pct || 0);
-        if (status === "completed") { setState("done"); setTimeout(() => navigate(`/results/${jid}`), 800); return; }
-        if (status === "failed") { setState("error"); setError("Analysis failed. Try a different file."); return; }
-      } catch { /* ignore */ }
-      await new Promise((r) => setTimeout(r, 1000));
+        consecutiveFails = 0;
+        const { status, progress: pct, message } = res.data;
+        if (message) {
+          setStatusMessage(message);
+        }
+        if (status === "completed") {
+          setProgress(100);
+          setState("done");
+          setTimeout(() => navigate(`/results/${jid}`), 800);
+          return;
+        }
+        if (status === "failed") {
+          setState("error");
+          setError(message || "Analysis failed. Try a different file.");
+          return;
+        }
+        setProgress((prev) => {
+          if (pct && pct > 0 && pct > prev) return pct;
+          return Math.min(prev + 2, 92);
+        });
+      } catch {
+        consecutiveFails++;
+        if (consecutiveFails >= 6) {
+          setState("error");
+          setError("Lost connection to server. Please check your network.");
+          return;
+        }
+      }
+      await new Promise((r) => setTimeout(r, 1200));
     }
-    setState("error"); setError("Analysis timed out.");
+    setState("error");
+    setError("Analysis timed out. Please try again with a shorter recording.");
   };
+
 
   const handleUpload = async () => {
     if (!file) return;
@@ -218,7 +245,7 @@ export default function Upload() {
 
             <div className="max-w-sm mx-auto">
               <div className="flex items-center justify-between text-[12px] mb-1.5">
-                <span className="text-text-muted">Progress</span>
+                <span className="text-text-muted">{statusMessage || "Progress"}</span>
                 <span className="text-accent font-medium">{progress}%</span>
               </div>
               <div className="bar-track !h-1.5">

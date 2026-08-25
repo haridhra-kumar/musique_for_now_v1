@@ -51,6 +51,9 @@ def _cents_from_nearest(freq: float) -> tuple[float, str]:
 
 
 def detect_pitch(y: np.ndarray, sr: int) -> list[PitchFrame]:
+    hop_samples = int(sr * cfg.CREPE_STEP_SIZE / 1000)
+    hop_sec = cfg.CREPE_STEP_SIZE / 1000.0
+
     time_crepe, freq_crepe, conf_crepe, _ = crepe.predict(
         y, sr,
         model_capacity=cfg.CREPE_MODEL_CAPACITY,
@@ -60,20 +63,20 @@ def detect_pitch(y: np.ndarray, sr: int) -> list[PitchFrame]:
 
     f0_pyin, voiced_pyin, _ = librosa.pyin(
         y, fmin=cfg.PYIN_FMIN, fmax=cfg.PYIN_FMAX, sr=sr,
-        frame_length=2048, hop_length=int(sr * cfg.CREPE_STEP_SIZE / 1000),
+        frame_length=2048, hop_length=hop_samples,
     )
-    time_pyin = librosa.times_like(f0_pyin, sr=sr,
-                                    hop_length=int(sr * cfg.CREPE_STEP_SIZE / 1000))
 
     frames: list[PitchFrame] = []
+    num_pyin = len(voiced_pyin)
+
     for i in range(len(time_crepe)):
         t = float(time_crepe[i])
         f = float(freq_crepe[i])
         c = float(conf_crepe[i])
         is_voiced = c >= cfg.CREPE_CONFIDENCE_THRESHOLD
 
-        pyin_idx = _find_nearest_idx(time_pyin, t)
-        if pyin_idx is not None and voiced_pyin[pyin_idx]:
+        pyin_idx = int(round(t / hop_sec)) if hop_sec > 0 else i
+        if 0 <= pyin_idx < num_pyin and voiced_pyin[pyin_idx]:
             pyin_f = float(f0_pyin[pyin_idx])
             if pyin_f > 0 and f > 0:
                 diff_cents = abs(1200 * np.log2((f + 1e-10) / (pyin_f + 1e-10)))
@@ -99,14 +102,6 @@ def detect_pitch(y: np.ndarray, sr: int) -> list[PitchFrame]:
 
     return frames
 
-
-def _find_nearest_idx(arr: np.ndarray, val: float) -> int | None:
-    if len(arr) == 0:
-        return None
-    idx = int(np.argmin(np.abs(arr - val)))
-    if abs(arr[idx] - val) < 0.02:
-        return idx
-    return None
 
 
 def _fix_octave_jump(prev_frames: list[PitchFrame], freq: float) -> float:

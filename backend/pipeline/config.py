@@ -16,8 +16,8 @@ SNR_WARNING_THRESHOLD = 10.0  # dB — below this, flag quality_warning
 NOISE_FLOOR_PERCENTILE = 10   # lowest-energy N% of frames = noise estimate
 
 # ── Pitch detection ───────────────────────────────────────────
-CREPE_MODEL_CAPACITY = "small"    # tiny | small | medium | large | full
-CREPE_STEP_SIZE = 10              # ms per frame
+CREPE_MODEL_CAPACITY = "tiny"     # tiny | small | medium | large | full
+CREPE_STEP_SIZE = 20              # ms per frame (50 fps — optimal for vocal analysis)
 CREPE_CONFIDENCE_THRESHOLD = 0.50 # below this = unvoiced / unreliable
 PYIN_FMIN = 65.0                  # Hz — lowest expected vocal pitch (C2)
 PYIN_FMAX = 1000.0                # Hz — highest expected vocal pitch (B5)

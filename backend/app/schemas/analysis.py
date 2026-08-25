@@ -10,6 +10,9 @@ class AnalysisStatusResponse(BaseModel):
     job_id: uuid.UUID
     status: str
     progress: int = 0
+    stage: str | None = None
+    message: str | None = None
+
 
 
 class AnalysisListItem(BaseModel):

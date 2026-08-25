@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import logging
 import uuid
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +21,7 @@ from ..schemas.analysis import (
 from ..services.credits import check_can_analyze, deduct_credit
 from ..services.storage import save_upload
 
+logger = logging.getLogger("audiocoach.api.analysis")
 router = APIRouter(prefix="/analyze", tags=["analysis"])
 settings = get_settings()
 
@@ -29,6 +31,7 @@ ALLOWED_EXTENSIONS = {".mp3", ".wav", ".mp4", ".mov", ".mkv", ".avi", ".webm",
 
 @router.post("/upload", response_model=UploadResponse, status_code=status.HTTP_202_ACCEPTED)
 async def upload_file(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -61,13 +64,18 @@ async def upload_file(
 
     await deduct_credit(db, user)
 
-    # Queue Celery task
+    # Queue Celery task if broker available; otherwise fallback to FastAPI BackgroundTasks
+    dispatched = False
     try:
         from tasks.analyze_task import run_analysis
         run_analysis.delay(str(analysis.id), storage_key)
-    except Exception:
-        analysis.status = "pending"
-        await db.flush()
+        dispatched = True
+    except Exception as e:
+        logger.info("Celery unavailable (%s), running analysis via background task", e)
+
+    if not dispatched:
+        from tasks.analyze_task import run_analysis_background
+        background_tasks.add_task(run_analysis_background, str(analysis.id), storage_key)
 
     return UploadResponse(job_id=analysis.id)
 
@@ -85,8 +93,39 @@ async def get_status(
     if not analysis:
         raise HTTPException(status_code=404, detail="Analysis not found")
 
-    progress = 100 if analysis.status == "completed" else (0 if analysis.status == "failed" else 50)
-    return AnalysisStatusResponse(job_id=analysis.id, status=analysis.status, progress=progress)
+    if analysis.status == "completed":
+        return AnalysisStatusResponse(
+            job_id=analysis.id,
+            status="completed",
+            progress=100,
+            stage="completed",
+            message="Analysis complete",
+        )
+    elif analysis.status == "failed":
+        return AnalysisStatusResponse(
+            job_id=analysis.id,
+            status="failed",
+            progress=0,
+            stage="failed",
+            message=analysis.error_message or "Analysis failed",
+        )
+    elif analysis.status == "pending":
+        return AnalysisStatusResponse(
+            job_id=analysis.id,
+            status="pending",
+            progress=5,
+            stage="queued",
+            message="Queued for analysis...",
+        )
+    else:
+        return AnalysisStatusResponse(
+            job_id=analysis.id,
+            status="processing",
+            progress=50,
+            stage="processing",
+            message="Analyzing audio performance...",
+        )
+
 
 
 @router.get("/{job_id}/result", response_model=AnalysisResultResponse)
