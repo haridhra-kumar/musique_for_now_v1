@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 import time
 
+from . import numpy_compat  # noqa: F401
 from .feedback import generate_feedback
 from .key import detect_key, detect_octave_shift
 from .loader import load_audio

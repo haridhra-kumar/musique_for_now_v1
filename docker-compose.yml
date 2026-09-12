@@ -27,6 +27,7 @@ services:
 
   backend:
     build: ./backend
+    image: audiocoach-backend:latest
     ports:
       - "8001:8000"
     env_file: ./backend/.env
@@ -42,10 +43,11 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - /app/.venv
       - uploads:/app/uploads
 
   celery-worker:
-    build: ./backend
+    image: audiocoach-backend:latest
     command: celery -A tasks.celery_app worker --loglevel=info --concurrency=2
     env_file: ./backend/.env
     environment:
@@ -60,6 +62,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - /app/.venv
       - uploads:/app/uploads
 
   frontend:

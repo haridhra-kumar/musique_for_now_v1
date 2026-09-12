@@ -26,7 +26,10 @@ Thumbs.db
 uploads/
 test_uploads/
 
-# Test
+# Test & local databases
+*.db
+*.sqlite
+*.sqlite3
 test.db
 .pytest_cache/
 htmlcov/

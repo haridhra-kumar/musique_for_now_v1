@@ -7,7 +7,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import crepe
+try:
+    import crepe
+except ImportError:
+    crepe = None
+
 import librosa
 import numpy as np
 
@@ -54,17 +58,23 @@ def detect_pitch(y: np.ndarray, sr: int) -> list[PitchFrame]:
     hop_samples = int(sr * cfg.CREPE_STEP_SIZE / 1000)
     hop_sec = cfg.CREPE_STEP_SIZE / 1000.0
 
-    time_crepe, freq_crepe, conf_crepe, _ = crepe.predict(
-        y, sr,
-        model_capacity=cfg.CREPE_MODEL_CAPACITY,
-        step_size=cfg.CREPE_STEP_SIZE,
-        viterbi=True,
-    )
-
     f0_pyin, voiced_pyin, _ = librosa.pyin(
         y, fmin=cfg.PYIN_FMIN, fmax=cfg.PYIN_FMAX, sr=sr,
         frame_length=2048, hop_length=hop_samples,
     )
+
+    if crepe is not None:
+        time_crepe, freq_crepe, conf_crepe, _ = crepe.predict(
+            y, sr,
+            model_capacity=cfg.CREPE_MODEL_CAPACITY,
+            step_size=cfg.CREPE_STEP_SIZE,
+            viterbi=True,
+        )
+    else:
+        num_frames = len(f0_pyin)
+        time_crepe = np.arange(num_frames) * hop_sec
+        freq_crepe = np.nan_to_num(f0_pyin, nan=0.0)
+        conf_crepe = voiced_pyin.astype(float)
 
     frames: list[PitchFrame] = []
     num_pyin = len(voiced_pyin)

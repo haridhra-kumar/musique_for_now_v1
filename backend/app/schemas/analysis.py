@@ -12,6 +12,7 @@ class AnalysisStatusResponse(BaseModel):
     progress: int = 0
     stage: str | None = None
     message: str | None = None
+    error: str | None = None
 
 
 

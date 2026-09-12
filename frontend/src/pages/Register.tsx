@@ -82,7 +82,7 @@ export default function Register() {
 
           <div className="mb-7">
             <h1 className="page-title !text-[22px]">Create your account</h1>
-            <p className="page-sub">Start with 5 free analysis credits.</p>
+            <p className="page-sub">Start analyzing your performances.</p>
           </div>
 
           {error && (

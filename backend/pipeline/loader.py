@@ -10,6 +10,7 @@ import subprocess
 import tempfile
 from dataclasses import dataclass
 
+from . import numpy_compat  # noqa: F401 # isort: skip
 import librosa
 import noisereduce as nr
 import numpy as np
@@ -42,11 +43,25 @@ def load_audio(path: str) -> LoadResult:
     tmp_path: str | None = None
 
     try:
-        if ext in _VIDEO_EXTENSIONS or ext not in {".wav"}:
+        if ext in _VIDEO_EXTENSIONS:
             tmp_path = _extract_audio_ffmpeg(path)
             wav_path = tmp_path
-
-        y, sr = librosa.load(wav_path, sr=cfg.SAMPLE_RATE, mono=False)
+            y, sr = librosa.load(wav_path, sr=cfg.SAMPLE_RATE, mono=False)
+        else:
+            try:
+                y, sr = librosa.load(wav_path, sr=cfg.SAMPLE_RATE, mono=False)
+            except Exception as load_err:
+                try:
+                    tmp_path = _extract_audio_ffmpeg(path)
+                    wav_path = tmp_path
+                    y, sr = librosa.load(wav_path, sr=cfg.SAMPLE_RATE, mono=False)
+                except Exception:
+                    raise RuntimeError(
+                        f"Could not load audio file ({load_err}). "
+                        "If this format requires FFmpeg, install it: "
+                        "brew install ffmpeg (Mac) / sudo apt install ffmpeg (Linux) / "
+                        "choco install ffmpeg (Windows)"
+                    )
 
         if y.ndim == 2:
             y = _smart_mono(y)
@@ -81,7 +96,6 @@ def _extract_audio_ffmpeg(input_path: str) -> str:
             [
                 "ffmpeg", "-i", input_path,
                 "-vn",                         # drop video
-                "-ac", "1",                    # mono
                 "-ar", str(cfg.SAMPLE_RATE),   # target sample rate
                 "-sample_fmt", "s16",          # 16-bit PCM
                 "-y",                          # overwrite

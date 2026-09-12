@@ -63,6 +63,7 @@ async def upload_file(
     await db.flush()
 
     await deduct_credit(db, user)
+    await db.commit()
 
     # Queue Celery task if broker available; otherwise fallback to FastAPI BackgroundTasks
     dispatched = False
@@ -71,7 +72,7 @@ async def upload_file(
         run_analysis.delay(str(analysis.id), storage_key)
         dispatched = True
     except Exception as e:
-        logger.info("Celery unavailable (%s), running analysis via background task", e)
+        logger.warning("Celery unavailable (%s), running analysis via background task", e)
 
     if not dispatched:
         from tasks.analyze_task import run_analysis_background
@@ -102,12 +103,14 @@ async def get_status(
             message="Analysis complete",
         )
     elif analysis.status == "failed":
+        err = analysis.error_message or "Analysis failed"
         return AnalysisStatusResponse(
             job_id=analysis.id,
             status="failed",
             progress=0,
             stage="failed",
-            message=analysis.error_message or "Analysis failed",
+            message=err,
+            error=err,
         )
     elif analysis.status == "pending":
         return AnalysisStatusResponse(

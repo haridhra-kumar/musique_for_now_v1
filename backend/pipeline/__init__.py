@@ -1,3 +1,5 @@
+from . import numpy_compat  # noqa: F401
+
 __all__ = ["analyze"]
 
 

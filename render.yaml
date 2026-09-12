@@ -1,0 +1,79 @@
+services:
+  # 1. AudioCoach Web API (FastAPI)
+  - type: web
+    name: audiocoach-api
+    runtime: python
+    rootDir: backend
+    buildCommand: ./render-build.sh
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: APP_NAME
+        value: AudioCoach AI
+      - key: DEBUG
+        value: "false"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: audiocoach-db
+          property: connectionString
+      - key: REDIS_URL
+        sync: false
+      - key: CELERY_BROKER_URL
+        sync: false
+      - key: CELERY_RESULT_BACKEND
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: STORAGE_BACKEND
+        value: s3
+      - key: S3_ENDPOINT_URL
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        value: auto
+      - key: CORS_ORIGINS
+        value: "https://*.vercel.app"
+
+  # 2. Celery Worker (Audio Analysis Pipeline)
+  - type: worker
+    name: audiocoach-worker
+    runtime: python
+    rootDir: backend
+    buildCommand: ./render-build.sh
+    startCommand: celery -A tasks.celery_app worker --loglevel=info --concurrency=2
+    envVars:
+      - key: APP_NAME
+        value: AudioCoach AI
+      - key: DATABASE_URL
+        fromDatabase:
+          name: audiocoach-db
+          property: connectionString
+      - key: REDIS_URL
+        sync: false
+      - key: CELERY_BROKER_URL
+        sync: false
+      - key: CELERY_RESULT_BACKEND
+        sync: false
+      - key: STORAGE_BACKEND
+        value: s3
+      - key: S3_ENDPOINT_URL
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        value: auto
+
+databases:
+  - name: audiocoach-db
+    databaseName: audiocoach
+    user: audiocoach
+    plan: free

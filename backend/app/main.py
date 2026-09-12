@@ -7,6 +7,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+import pipeline.numpy_compat  # noqa: F401
+
 from .api.router import api_router
 from .config import get_settings
 from .database import Base, engine
@@ -29,10 +31,23 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+origins = settings.cors_origin_list
+allow_credentials = True
+allow_origin_regex = settings.cors_origin_regex or None
+
+if "*" in origins:
+    # Starlette raises an error if allow_origins has '*' when allow_credentials is True
+    # Using a catch-all regex preserves credentials support for all origins
+    allow_origins = []
+    allow_origin_regex = r"^https?://.*"
+else:
+    allow_origins = origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origin_list,
-    allow_credentials=True,
+    allow_origins=allow_origins,
+    allow_origin_regex=allow_origin_regex,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
