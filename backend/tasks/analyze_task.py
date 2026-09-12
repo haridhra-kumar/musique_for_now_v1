@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import time
 import uuid
 
@@ -27,6 +28,8 @@ elif "+asyncpg" not in settings.database_url and "postgresql://" in settings.dat
     sync_url = settings.database_url.replace("postgresql://", "postgresql+psycopg2://")
 if sync_url.startswith("sqlite+aiosqlite://"):
     sync_url = sync_url.replace("sqlite+aiosqlite://", "sqlite://")
+if "postgresql" in sync_url:
+    sync_url = re.sub(r"([?&])ssl=([^&]+)", r"\1sslmode=\2", sync_url)
 
 sync_engine = create_engine(sync_url)
 SyncSession = sessionmaker(bind=sync_engine)
