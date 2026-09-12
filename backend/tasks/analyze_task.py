@@ -57,8 +57,8 @@ def to_native(obj):
 
 def process_analysis(analysis_id: str, storage_key: str) -> dict:
     """Core analysis execution used by both Celery and FastAPI BackgroundTasks."""
+    import pipeline
     from app.services.storage import get_file_path_info
-    from pipeline import analyze
 
     session = SyncSession()
     file_path = None
@@ -81,7 +81,7 @@ def process_analysis(analysis_id: str, storage_key: str) -> dict:
         file_path, is_temp = asyncio.run(get_file_path_info(storage_key))
 
         logger.info("Running pipeline on %s", file_path)
-        result = to_native(analyze(file_path))
+        result = to_native(pipeline.analyze(file_path))
 
         analysis.status = "completed"
         analysis.overall_score = result["overall_score"]
